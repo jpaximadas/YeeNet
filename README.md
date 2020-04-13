@@ -8,3 +8,6 @@ you can fix things by running ```git submodule update --init``` (This is only ne
 # Directories
 * my-project contains your application
 * my-common-code contains something shared.
+
+# How to upload
+* st-flash write awesomesauce.bin 0x8000000 (do not autoreset the MCU--memory will be erased!)
