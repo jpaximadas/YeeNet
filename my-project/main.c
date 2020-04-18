@@ -24,14 +24,14 @@
  * $ screen /dev/ttyX 115200 8n1
  */
 
-#include <string.h>
-#include "uart.h"
 #include "lora.h"
+#include "uart.h"
+#include "util.h"
 
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
-
 #include <libopencm3/stm32/spi.h>
+
 
 
 
@@ -69,7 +69,7 @@ static void clock_setup(void) {
 
 
 
-FILE *fp_uart;
+
 
 int main(void) {
 	clock_setup();
@@ -79,7 +79,7 @@ int main(void) {
     fp_uart = uart_setup();
     fprintf(fp_uart,"here I am\r\n");
     
-    //lora_setup(&lora0,miso,mosi,sck,nss,rst,irq);
+    lora_setup(&lora0,miso,mosi,sck,nss,rst,irq);
 	for(;;); //halt
 	/*
     uint8_t buf[255];
