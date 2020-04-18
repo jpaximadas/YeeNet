@@ -1,5 +1,7 @@
 #pragma once
 #include <stdbool.h>
+#include "util.h"
+#include <sys/types.h>
 
 #define LORA_PACKET_SIZE 255
 
@@ -67,10 +69,7 @@
 #define REG_PA_DAC 0x4D
 
 
-struct pin_port {
-	uint32_t port;
-	uint32_t pin;
-};
+
 
 struct lora_modem {
 
@@ -82,8 +81,10 @@ struct lora_modem {
     struct pin_port mosi_pin_port;
     struct pin_port miso_pin_port;
     struct pin_port sck_pin_port;
+    struct pin_port irq_pin_port;
     
 };
+
 
 // High level API
 enum lora_fifo_status {
@@ -106,9 +107,12 @@ void lora_listen(struct lora_modem *lora);
 enum lora_fifo_status lora_get_packet(struct lora_modem *lora, uint8_t buf_out[LORA_PACKET_SIZE]);
 
 // Low level API
+void gpio_setup(struct lora_modem *lora);
+void spi_setup(struct lora_modem *lora);
+void irq_setup(struct lora_modem *lora);
+
 void lora_write_fifo(struct lora_modem *lora, uint8_t *buf, uint8_t len, uint8_t offset);
 void lora_read_fifo(struct lora_modem *lora, uint8_t *buf, uint8_t len, uint8_t offset);
-
 
 uint8_t lora_read_reg(struct lora_modem *lora, uint8_t reg);
 void lora_write_reg(struct lora_modem *lora, uint8_t reg, uint8_t val);

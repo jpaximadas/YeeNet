@@ -2,13 +2,17 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <util.h>
 
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
-#include <libopencm3/stm32/usart.h>
 #include <libopencm3/stm32/spi.h>
+#include <libopencm3/cm3/nvic.h>
+#include <libopencm3/stm32/exti.h>
 
 #include "lora.h"
+#include "uart.h"
+#include "util.h"
 
 
 #define ARRAY_SIZE(x) (sizeof((x)) / sizeof(*(x)))
@@ -31,7 +35,7 @@ void exti8_isr(void) {
     exti8_modem->irq_seen = false;
 }
 
-const static uint8_t LONGR_MODEM_CONFIG[][2] = {
+static const uint8_t LONGR_MODEM_CONFIG[][2] = {
     // Configure PA_BOOST with max power
     {LORA_REG_PA_CONFIG, 0x8f},
 
@@ -82,7 +86,7 @@ const static uint8_t LONGR_MODEM_CONFIG[][2] = {
     {LORA_REG_FR_LSB, FREQ_TO_REG(915000000) & 0b11111111},
 };
 
-const static uint8_t DEFAULT_MODEM_CONFIG[][2] = {
+static const uint8_t DEFAULT_MODEM_CONFIG[][2] = {
     // Configure PA_BOOST with max power
     {LORA_REG_PA_CONFIG, 0x8f},
 
@@ -147,11 +151,12 @@ bool lora_setup(struct lora_modem *lora,
 	struct pin_port nss_pin_port, 
 	struct pin_port rst_pin_port, 
 	struct pin_port irq_pin_port) {
-
+	fprintf(fp_uart,"entered lora setup");
     lora->irq_data = 0;
     lora->irq_seen = true;
     lora->miso_pin_port = miso_pin_port;
     lora->mosi_pin_port = mosi_pin_port;
+    lora->sck_pin_port = sck_pin_port;
     lora->nss_pin_port = nss_pin_port;
     lora->rst_pin_port = rst_pin_port;
     lora->irq_pin_port = irq_pin_port;
@@ -161,7 +166,7 @@ bool lora_setup(struct lora_modem *lora,
     spi_setup(lora);
     irq_setup(lora);
 	
-
+	fprintf(fp_uart,"completed mcu config steps");
     // TODO: Allow user-configurable interrupt pins
     // For now, assume exti8 is used
     exti8_modem = lora;
@@ -169,7 +174,7 @@ bool lora_setup(struct lora_modem *lora,
     // Change mode LORA + SLEEP
     if (!lora_write_reg_and_check(lora, LORA_REG_OP_MODE, MODE_LORA | MODE_SLEEP, true)) {
 #ifdef DEBUG
-        fputs("Failed to enter LORA+SLEEP mode!\r\n", &serial0->iostream);
+        fputs("Failed to enter LORA+SLEEP mode!\r\n", fp_uart);
 #endif
         return false;
     }
@@ -178,7 +183,7 @@ bool lora_setup(struct lora_modem *lora,
     if (!lora_write_reg_and_check(lora, LORA_REG_PAYLOAD_LENGTH, LORA_PACKET_SIZE, false) ||
         !lora_write_reg_and_check(lora, LORA_REG_MAX_PAYLOAD_LENGTH, LORA_PACKET_SIZE, false)) {
 #ifdef DEBUG
-        fprintf(&serial0->iostream, "Failed to set payload size!\n");
+        fprintf(fp_uart, "Failed to set payload size!\n");
 #endif
         return false;
     }
@@ -187,14 +192,14 @@ bool lora_setup(struct lora_modem *lora,
     for (size_t i=0; i<ARRAY_SIZE(CUR_MODEM_CONFIG); i++) {
         if (!lora_write_reg_and_check(lora, CUR_MODEM_CONFIG[i][0], CUR_MODEM_CONFIG[i][1], false)) {
 #ifdef DEBUG
-            fprintf(&serial0->iostream, "Failed to write reg: 0x%x\r\n", CUR_MODEM_CONFIG[i][0]);
+            fprintf(fp_uart, "Failed to write reg: 0x%x\r\n", CUR_MODEM_CONFIG[i][0]);
 #endif
             return false;
         }
     }
 
 #ifdef DEBUG
-    fprintf(&serial0->iostream,"Starting RNG generation\n\r");
+    fprintf(fp_uart,"Starting RNG generation\n\r");
 #endif
     seed_random(lora);
     return true;
@@ -205,18 +210,18 @@ void seed_random(struct lora_modem *lora) {
     lora_write_reg(lora,LORA_REG_OP_MODE,MODE_LORA | MODE_RXCON);
     for(uint8_t i = 0;i<32;i++){
         uint32_t val = lora_read_reg(lora, LORA_REG_RSSI_WIDEBAND);
-        _delay_ms(1);
+        delay_nops(1000000);
         new_seed = new_seed | ( (val&0x00000001) << i);
     }
 #ifdef DEBUG
-    fprintf(&serial0->iostream, "generated seed %lx\r\n",new_seed);
+    fprintf(fp_uart, "generated seed %lx\r\n",new_seed);
 #endif
-    srandom((long) new_seed);
+    srand((long) new_seed);
     lora_write_reg(lora,LORA_REG_OP_MODE,MODE_LORA | MODE_STDBY);
 }
 
 uint32_t rand_32(void) {
-    return random();
+    return rand();
 }
 
 void lora_load_message(struct lora_modem *lora, uint8_t msg[LORA_PACKET_SIZE]) {
@@ -266,13 +271,13 @@ enum lora_fifo_status lora_get_packet(struct lora_modem *lora, uint8_t buf_out[L
 // Low-level LoRA API
 //
 
-static void spi_setup(struct *lora_modem lora) {
+void spi_setup(struct lora_modem *lora) {
 
   /* Configure GPIOs: SS=PA15, SCK=PB3, MISO=PB4 and MOSI=PB5 */
-  gpio_set_mode(lora->nss_pin_port->port, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, lora->nss_pin_port->pin);
-  gpio_set_mode(lora->sck_pin_port->port, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, lora->sck_pin_port->pin);
-  gpio_set_mode(lora->mosi_pin_port->port, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, lora->mosi_pin_port->pin;
-  gpio_set_mode(lora->miso_pin_port->port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, lora->miso_pin_port->pin);
+  gpio_set_mode(lora->nss_pin_port.port, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, lora->nss_pin_port.pin);
+  gpio_set_mode(lora->sck_pin_port.port, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, lora->sck_pin_port.pin);
+  gpio_set_mode(lora->mosi_pin_port.port, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, lora->mosi_pin_port.pin);
+  gpio_set_mode(lora->miso_pin_port.port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, lora->miso_pin_port.pin);
 
   /* Reset SPI, SPI_CR1 register cleared, SPI is disabled */
   spi_reset(lora->spi_interface);
@@ -298,16 +303,16 @@ static void spi_setup(struct *lora_modem lora) {
   spi_enable(lora->spi_interface);
 }
 
-static gpio_setup(struct *lora_modem lora) {
-	gpio_set_mode(lora->rst_pin_port->port, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, lora->rst_pin_port->pin);
+void gpio_setup(struct lora_modem *lora) {
+	gpio_set_mode(lora->rst_pin_port.port, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, lora->rst_pin_port.pin);
 	
 }
 
-static irq_setup(struct *lora_modem lora){
+void irq_setup(struct lora_modem *lora){
 	
 	nvic_enable_irq(NVIC_EXTI8_IRQ); //interrupt on PB8
-	gpio_set_mode(lora->irq_pin_port->port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, lora->rst_pin_port->pin);
-	exti_select_source(EXTI8,lora->irq_pin_port->port);
+	gpio_set_mode(lora->irq_pin_port.port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, lora->rst_pin_port.pin);
+	exti_select_source(EXTI8,lora->irq_pin_port.port);
 	exti_set_trigger(EXTI8,EXTI_TRIGGER_RISING);
 	exti_enable_request(EXTI8);
 }
@@ -336,7 +341,7 @@ void lora_read_fifo(struct lora_modem *lora, uint8_t *buf, uint8_t len, uint8_t 
     // Update modem's FIFO address pointer
     spi_set_nss_low(lora->spi_interface);
     spi_xfer(lora->spi_interface,LORA_REG_FIFO_ADDR_PTR | WRITE_MASK);
-    spi_xferlora->spi_interface,offset);
+    spi_xfer(lora->spi_interface,offset);
     spi_set_nss_high(lora->spi_interface);
 
     // Read data from FIFO
@@ -374,7 +379,7 @@ bool lora_write_reg_and_check(struct lora_modem *lora, uint8_t reg, uint8_t val,
 
     // Delay
     if (delay)
-        _delay_ms(10);
+        delay_nops(10000000);
 
     //read reg
     uint8_t new_val = lora_read_reg(lora, reg);
@@ -385,26 +390,26 @@ bool lora_write_reg_and_check(struct lora_modem *lora, uint8_t reg, uint8_t val,
 
 void lora_dbg_print_irq(uint8_t data) {
     if(data & LORA_MASK_IRQFLAGS_RXTIMEOUT)
-        fputs("RX timed out\r\n", &serial0->iostream);
+        fputs("RX timed out\r\n", fp_uart);
 
     if(data & LORA_MASK_IRQFLAGS_RXDONE)
-        fputs("RX finished \r\n", &serial0->iostream);
+        fputs("RX finished \r\n", fp_uart);
 
     if(data & LORA_MASK_IRQFLAGS_PAYLOADCRCERROR)
-        fputs("CRC error\r\n", &serial0->iostream);
+        fputs("CRC error\r\n", fp_uart);
 
     if(!(data & LORA_MASK_IRQFLAGS_VALIDHEADER))
-        fputs("Last header invalid\r\n", &serial0->iostream);
+        fputs("Last header invalid\r\n", fp_uart);
 
     if(data & LORA_MASK_IRQFLAGS_TXDONE)
-        fputs("TX complete\r\n", &serial0->iostream);
+        fputs("TX complete\r\n", fp_uart);
 
     if(data & LORA_MASK_IRQFLAGS_CADDONE)
-        fputs("CAD finished\r\n", &serial0->iostream);
+        fputs("CAD finished\r\n", fp_uart);
 
     if(data & LORA_MASK_IRQFLAGS_FHSSCHANGECHANNEL)
-        fputs("FHSS change channel\r\n", &serial0->iostream);
+        fputs("FHSS change channel\r\n", fp_uart);
 
     if(data & LORA_MASK_IRQFLAGS_CADDETECTED)
-        fputs("Channel activity detected\r\n", &serial0->iostream);
+        fputs("Channel activity detected\r\n", fp_uart);
 }
