@@ -5,6 +5,7 @@ SHARED_DIR = ../my-common-code
 CFILES = main.c
 CFILE += lora.c
 CFILES += api.c
+CFILES += uart.c
 AFILES += api-asm.S
 
 # TODO - you will need to edit these two lines!

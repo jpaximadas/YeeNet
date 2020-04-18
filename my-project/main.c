@@ -23,42 +23,18 @@
  * After uploading the program, interact with it using GNU screen:
  * $ screen /dev/ttyX 115200 8n1
  */
-#define _GNU_SOURCE
-#include <stdio.h>
+
 #include <string.h>
-
+#include "uart.h"
 #include "lora.h"
-
-/*
-#define RST_PORT GPIOB
-#define RST_PIN GPIO9
-
-#define SS_PORT GPIOA
-#define SS_PIN GPIO15
-
-#define SCK_PORT GPIOB
-#define SCK_PIN GPIO3
-
-#define MISO_PORT GPIOB
-#define MISO_PIN GPIO4
-
-#define MOSI_PORT GPIOB
-#define MOSI_PIN GPIO5
-
-#define IRQ_PORT GPIOB
-#define IRQ_PIN GPIO8
-*/
 
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
-#include <libopencm3/stm32/usart.h>
+
 #include <libopencm3/stm32/spi.h>
 
 
-#include <stdio.h>
-#include <errno.h>
-#include <stddef.h>
-#include <sys/types.h>
+
 
 static struct lora_modem lora0;
 
@@ -69,29 +45,7 @@ static struct pin_port sck = {.pin=GPIO3, .port=GPIOB};
 static struct pin_port nss = {.pin=GPIO15, .port=GPIOA};
 static struct pin_port irq = {.pin=GPIO8, .port=GPIOB};
 
-static ssize_t _iord(void *_cookie, char *_buf, size_t _n);
-static ssize_t _iowr(void *_cookie, const char *_buf, size_t _n);
 
-static ssize_t _iord(void *_cookie, char *_buf, size_t _n)
-{
-	/* dont support reading now */
-	(void)_cookie;
-	(void)_buf;
-	(void)_n;
-	return 0;
-}
-
-static ssize_t _iowr(void *_cookie, const char *_buf, size_t _n)
-{
-	uint32_t dev = (uint32_t)_cookie;
-
-	int written = 0;
-	while (_n-- > 0) {
-		usart_send_blocking(dev, *_buf++);
-		written++;
-	};
-	return written;
-}
 
 
 
@@ -113,53 +67,20 @@ static void clock_setup(void) {
 	rcc_periph_clock_enable(RCC_SPI1);
 }
 
-static FILE *usart_setup(void) {
-	/* Enable the USART1 interrupt. */
-	//nvic_enable_irq(NVIC_USART1_IRQ);
-
-	/* Setup GPIO pin GPIO_USART1_RE_TX on GPIO port A for transmit. */
-	gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_50_MHZ,
-		      GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, GPIO_USART1_TX);
-
-	/* Setup GPIO pin GPIO_USART1_RE_RX on GPIO port A for receive. */
-	gpio_set_mode(GPIOA, GPIO_MODE_INPUT,
-		      GPIO_CNF_INPUT_FLOAT, GPIO_USART1_RX);
-
-	/* Setup UART parameters. */
-	usart_set_baudrate(USART1, 115200);
-	usart_set_databits(USART1, 8);
-	usart_set_stopbits(USART1, USART_STOPBITS_1);
-	usart_set_parity(USART1, USART_PARITY_NONE);
-	usart_set_flow_control(USART1, USART_FLOWCONTROL_NONE);
-	usart_set_mode(USART1, USART_MODE_TX_RX);
-
-	/* Enable USART1 Receive interrupt. */
-	//USART_CR1(USART1) |= USART_CR1_RXNEIE;
-
-	/* Finally enable the USART. */
-	usart_enable(USART1);
-	
-	cookie_io_functions_t stub = { _iord, _iowr, NULL, NULL };
-	FILE *fp = fopencookie((void *)USART1, "rw+", stub);
-	/* Do not buffer the serial line */
-	setvbuf(fp, NULL, _IONBF, 0);
-	return fp;
-}
 
 
+FILE *fp_uart;
 
 int main(void) {
 	clock_setup();
     // Initalize USART0 at 115200 baud
-    FILE *fp;
-    
-    fp = usart_setup();
-    fprintf(fp,"here I am\r\n");
     
     
-    for(;;); //halt
+    fp_uart = uart_setup();
+    fprintf(fp_uart,"here I am\r\n");
     
     //lora_setup(&lora0,miso,mosi,sck,nss,rst,irq);
+	for(;;); //halt
 	/*
     uint8_t buf[255];
     lora_listen(&lora0);
@@ -175,7 +96,7 @@ int main(void) {
 
             //fprintf(&serial0->iostream,"transmiting\r\n");
             lora_transmit(&lora0);
-            fprintf(&serial0->iostream,"sent: %s\r\n",buf);
+            fprintf(fp,"sent: %s\r\n",buf);
             lora_listen(&lora0);
         }
 
@@ -183,9 +104,9 @@ int main(void) {
         //fprintf(&serial0->iostream,"packet stat: %x\r\n",msg_stat);
 
         if (msg_stat == FIFO_GOOD) {
-            fprintf(&serial0->iostream,"got message: %s\r\n", buf);
+            fprintf(fp,"got message: %s\r\n", buf);
         } else if(msg_stat == FIFO_BAD) {
-            fprintf(&serial0->iostream, "bad packet\r\n");
+            fprintf(fp, "bad packet\r\n");
         }
         _delay_ms(500);
     }*/

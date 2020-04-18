@@ -92,14 +92,14 @@ enum lora_fifo_status {
     FIFO_EMPTY
 };
 
-/*
+
 bool lora_setup(struct lora_modem *lora, 
 	struct pin_port miso_pin_port, 
 	struct pin_port mosi_pin_port, 
 	struct pin_port sck_pin_port, 
 	struct pin_port nss_pin_port, 
 	struct pin_port rst_pin_port, 
-	struct pin_port irq_pin_port);*/
+	struct pin_port irq_pin_port);
 void lora_load_message(struct lora_modem *lora, uint8_t msg[LORA_PACKET_SIZE]);
 bool lora_transmit(struct lora_modem *lora);
 void lora_listen(struct lora_modem *lora);
