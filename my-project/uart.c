@@ -1,8 +1,9 @@
-#define _GNU_SOURCE
-#include <libopencm3/stm32/usart.h>
-
-#include <stdio.h>
 #include "uart.h"
+
+#define _GNU_SOURCE
+
+#include <libopencm3/stm32/usart.h>
+#include <stdio.h>
 #include <sys/types.h>
 #include <libopencm3/stm32/gpio.h>
 #include <errno.h>
