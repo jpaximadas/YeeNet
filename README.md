@@ -1,3 +1,5 @@
+![yee](yee.jpg)
+
 # Instructions
  1. make -C libopencm3 # (Only needed once)
  2. make -C my-project
