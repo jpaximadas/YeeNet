@@ -1,5 +1,6 @@
 #pragma once
 #include <stdbool.h>
+#include <libopencm3/stm32/gpio.h>
 #include "util.h"
 #include <sys/types.h>
 
@@ -77,7 +78,7 @@ struct lora_modem {
     volatile bool irq_seen;
     uint32_t spi_interface;
     struct pin_port rst_pin_port;
-    struct pin_port nss_pin_port;
+    struct pin_port ss_pin_port;
     struct pin_port mosi_pin_port;
     struct pin_port miso_pin_port;
     struct pin_port sck_pin_port;
@@ -95,10 +96,11 @@ enum lora_fifo_status {
 
 
 bool lora_setup(struct lora_modem *lora, 
+	uint32_t spi_interface,
 	struct pin_port miso_pin_port, 
 	struct pin_port mosi_pin_port, 
 	struct pin_port sck_pin_port, 
-	struct pin_port nss_pin_port, 
+	struct pin_port ss_pin_port, 
 	struct pin_port rst_pin_port, 
 	struct pin_port irq_pin_port);
 void lora_load_message(struct lora_modem *lora, uint8_t msg[LORA_PACKET_SIZE]);
@@ -122,3 +124,11 @@ void seed_random(struct lora_modem *lora);
 uint32_t rand_32(void);
 
 void lora_dbg_print_irq(uint8_t data);
+
+inline static void ss_set(struct lora_modem *lora){
+	gpio_set(lora->ss_pin_port.port,lora->ss_pin_port.pin);
+}
+
+inline static void ss_clear(struct lora_modem *lora){
+	gpio_clear(lora->ss_pin_port.port,lora->ss_pin_port.pin);
+}

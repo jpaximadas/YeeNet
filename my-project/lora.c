@@ -1,3 +1,5 @@
+#define DEBUG
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -9,6 +11,7 @@
 #include <libopencm3/stm32/spi.h>
 #include <libopencm3/cm3/nvic.h>
 #include <libopencm3/stm32/exti.h>
+#include <libopencm3/stm32/usart.h>
 
 #include "lora.h"
 #include "uart.h"
@@ -23,8 +26,9 @@
 
 // LoRA interrupt routine
 static struct lora_modem *exti8_modem;
-void exti8_isr(void) {
-	exti_reset_request(EXTI8);
+void exti0_isr(void) {
+	fprintf(fp_uart,"in isr\r\n");
+	exti_reset_request(EXTI0);
     // Read irq_data register
     exti8_modem->irq_data = lora_read_reg(exti8_modem, LORA_REG_IRQFLAGS);
 
@@ -145,32 +149,45 @@ static const uint8_t DEFAULT_MODEM_CONFIG[][2] = {
 
 
 bool lora_setup(struct lora_modem *lora, 
+	uint32_t spi_interface,
 	struct pin_port miso_pin_port, 
 	struct pin_port mosi_pin_port, 
 	struct pin_port sck_pin_port, 
-	struct pin_port nss_pin_port, 
+	struct pin_port ss_pin_port, 
 	struct pin_port rst_pin_port, 
 	struct pin_port irq_pin_port) {
-	fprintf(fp_uart,"entered lora setup");
+	fprintf(fp_uart,"entered lora setup\r\n");
+	
+	#ifdef DEBUG
+	fputs("In debug mode in lora setup\r\n", fp_uart);
+#endif
     lora->irq_data = 0;
     lora->irq_seen = true;
     lora->miso_pin_port = miso_pin_port;
     lora->mosi_pin_port = mosi_pin_port;
     lora->sck_pin_port = sck_pin_port;
-    lora->nss_pin_port = nss_pin_port;
+    lora->ss_pin_port = ss_pin_port;
     lora->rst_pin_port = rst_pin_port;
     lora->irq_pin_port = irq_pin_port;
-
+    lora->spi_interface = spi_interface;
+	
     // Configure pin modes and spi interface
     gpio_setup(lora);
     spi_setup(lora);
     irq_setup(lora);
 	
-	fprintf(fp_uart,"completed mcu config steps");
     // TODO: Allow user-configurable interrupt pins
     // For now, assume exti8 is used
     exti8_modem = lora;
-
+	
+	//Reset the board
+	gpio_clear(lora->rst_pin_port.port,lora->rst_pin_port.pin);
+	delay_nops(1000000);
+	gpio_set(lora->rst_pin_port.port,lora->rst_pin_port.pin);
+	
+	
+	
+	fprintf(fp_uart,"attempting to put lora into sleep mode\r\n");
     // Change mode LORA + SLEEP
     if (!lora_write_reg_and_check(lora, LORA_REG_OP_MODE, MODE_LORA | MODE_SLEEP, true)) {
 #ifdef DEBUG
@@ -225,6 +242,7 @@ uint32_t rand_32(void) {
 }
 
 void lora_load_message(struct lora_modem *lora, uint8_t msg[LORA_PACKET_SIZE]) {
+	fprintf(fp_uart,"loading message...\r\n");
     lora_write_fifo(lora, msg, LORA_PACKET_SIZE, 0);
 }
 
@@ -273,34 +291,32 @@ enum lora_fifo_status lora_get_packet(struct lora_modem *lora, uint8_t buf_out[L
 
 void spi_setup(struct lora_modem *lora) {
 
-  /* Configure GPIOs: SS=PA15, SCK=PB3, MISO=PB4 and MOSI=PB5 */
-  gpio_set_mode(lora->nss_pin_port.port, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, lora->nss_pin_port.pin);
-  gpio_set_mode(lora->sck_pin_port.port, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, lora->sck_pin_port.pin);
-  gpio_set_mode(lora->mosi_pin_port.port, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, lora->mosi_pin_port.pin);
-  gpio_set_mode(lora->miso_pin_port.port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, lora->miso_pin_port.pin);
+   
+	gpio_set_mode(lora->ss_pin_port.port, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, lora->ss_pin_port.pin);
+	gpio_set_mode(lora->sck_pin_port.port, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, lora->sck_pin_port.pin);
+	gpio_set_mode(lora->mosi_pin_port.port, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, lora->mosi_pin_port.pin);
+	gpio_set_mode(lora->miso_pin_port.port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, lora->miso_pin_port.pin);
+	
+	
+	
+ 
+	spi_reset(lora->spi_interface);
 
-  /* Reset SPI, SPI_CR1 register cleared, SPI is disabled */
-  spi_reset(lora->spi_interface);
+  //spi_set_master_mode(lora->spi_interface);
+  //I really hope this is mode 0
+	spi_init_master(lora->spi_interface, SPI_CR1_BAUDRATE_FPCLK_DIV_128, SPI_CR1_CPOL_CLK_TO_0_WHEN_IDLE,
+			SPI_CR1_CPHA_CLK_TRANSITION_1, SPI_CR1_DFF_8BIT, SPI_CR1_MSBFIRST);
+  //spi_set_baudrate_prescaler(lora->spi_interface,SPI_CR1_BR_FPCLK_DIV_128);
+  //spi_set_standard_mode(lora->spi_interface,0);
+	
+	
+	
 
-  /* Set up SPI as Master in mode 0
-   */
-  spi_set_master_mode(lora->spi_interface);
-  spi_set_baudrate_prescaler(lora->spi_interface,SPI_CR1_BR_FPCLK_DIV_64);
-  spi_set_standard_mode(lora->spi_interface,0);
+	spi_enable_software_slave_management(lora->spi_interface);
+	spi_set_nss_high(lora->spi_interface);
+	ss_set(lora);
 
-  /*
-   * Set NSS management to software.
-   *
-   * Note:
-   * Setting nss high is very important, even if we are controlling the GPIO
-   * ourselves this bit needs to be at least set to 1, otherwise the spi
-   * peripheral will not send any data out.
-   */
-  spi_enable_software_slave_management(lora->spi_interface);
-  spi_set_nss_high(lora->spi_interface);
-
-  /* Enable SPI1 periph. */
-  spi_enable(lora->spi_interface);
+	spi_enable(SPI1);
 }
 
 void gpio_setup(struct lora_modem *lora) {
@@ -309,77 +325,77 @@ void gpio_setup(struct lora_modem *lora) {
 }
 
 void irq_setup(struct lora_modem *lora){
+	nvic_enable_irq(NVIC_EXTI0_IRQ); //interrupt on PB8
 	
-	nvic_enable_irq(NVIC_EXTI8_IRQ); //interrupt on PB8
-	gpio_set_mode(lora->irq_pin_port.port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, lora->rst_pin_port.pin);
-	exti_select_source(EXTI8,lora->irq_pin_port.port);
-	exti_set_trigger(EXTI8,EXTI_TRIGGER_RISING);
-	exti_enable_request(EXTI8);
+	gpio_set_mode(lora->irq_pin_port.port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, lora->irq_pin_port.pin);
+	exti_select_source(EXTI0,lora->irq_pin_port.port);
+	exti_set_trigger(EXTI0,EXTI_TRIGGER_RISING);
+	exti_enable_request(EXTI0);
 }
 
 void lora_write_fifo(struct lora_modem *lora, uint8_t* buf, uint8_t len, uint8_t offset) {
     // Some assertions to check input data in DEBUG mode
 
     // Update modem's FIFO address pointer
-    spi_set_nss_low(lora->spi_interface);
+    ss_clear(lora);
     spi_xfer(lora->spi_interface,LORA_REG_FIFO_ADDR_PTR | WRITE_MASK);
     spi_xfer(lora->spi_interface,offset);
-    spi_set_nss_high(lora->spi_interface);
+    ss_set(lora);
+    
+    delay_nops(100000);
     //assume compiler is not good enough to emit an sbi instruction for the digital_writes
     // Write data to FIFO.
-    spi_set_nss_low(lora->spi_interface);
+    ss_clear(lora);
     spi_xfer(lora->spi_interface,LORA_REG_FIFO | WRITE_MASK);
     for (uint8_t i=0; i<len; i++) {
         spi_xfer(lora->spi_interface,buf[i]);
     }
-    spi_set_nss_high(lora->spi_interface);
+    ss_set(lora);
 
 }
 
 void lora_read_fifo(struct lora_modem *lora, uint8_t *buf, uint8_t len, uint8_t offset) {
 
     // Update modem's FIFO address pointer
-    spi_set_nss_low(lora->spi_interface);
+    ss_clear(lora);
     spi_xfer(lora->spi_interface,LORA_REG_FIFO_ADDR_PTR | WRITE_MASK);
     spi_xfer(lora->spi_interface,offset);
-    spi_set_nss_high(lora->spi_interface);
+    ss_set(lora);
 
+	delay_nops(100000);
     // Read data from FIFO
-    spi_set_nss_low(lora->spi_interface);
+    ss_clear(lora);
     spi_xfer(lora->spi_interface,LORA_REG_FIFO);
     for (uint8_t i=0; i<len; i++) {
         buf[i] = spi_xfer(lora->spi_interface,0x00);
     }
-    spi_set_nss_high(lora->spi_interface);
+    ss_set(lora);
 }
 
 uint8_t lora_read_reg(struct lora_modem *lora, uint8_t reg) {
-    spi_set_nss_low(lora->spi_interface);
+    ss_clear(lora);
 
     spi_xfer(lora->spi_interface,reg & 0x7F);
     uint8_t ret = spi_xfer(lora->spi_interface,0);
 
-    spi_set_nss_high(lora->spi_interface);
+    ss_set(lora);
 
     return ret;
 }
 
 void lora_write_reg(struct lora_modem *lora, uint8_t reg, uint8_t val) {
-    spi_set_nss_low(lora->spi_interface);
-
+	ss_clear(lora);
     spi_xfer(lora->spi_interface, reg | WRITE_MASK);
     spi_xfer(lora->spi_interface, val);
-
-    spi_set_nss_high(lora->spi_interface);
+    ss_set(lora);
 }
 
 bool lora_write_reg_and_check(struct lora_modem *lora, uint8_t reg, uint8_t val, bool delay) {
     // Write register
     lora_write_reg(lora, reg, val);
-
     // Delay
     if (delay)
-        delay_nops(10000000);
+        delay_nops(100000);
 
     //read reg
     uint8_t new_val = lora_read_reg(lora, reg);

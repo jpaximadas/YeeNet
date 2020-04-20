@@ -24,6 +24,8 @@
  * $ screen /dev/ttyX 115200 8n1
  */
 
+#define DEBUG
+
 #include "lora.h"
 #include "uart.h"
 #include "util.h"
@@ -31,6 +33,7 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/spi.h>
+#include <libopencm3/stm32/usart.h>
 
 
 
@@ -39,11 +42,13 @@
 static struct lora_modem lora0;
 
 static struct pin_port rst = {.pin=GPIO9, .port=GPIOB};
-static struct pin_port mosi = {.pin=GPIO5, .port=GPIOB};
-static struct pin_port miso = {.pin=GPIO4, .port=GPIOB};
-static struct pin_port sck = {.pin=GPIO3, .port=GPIOB};
-static struct pin_port nss = {.pin=GPIO15, .port=GPIOA};
-static struct pin_port irq = {.pin=GPIO8, .port=GPIOB};
+
+static struct pin_port mosi = {.pin=GPIO7, .port=GPIOA};
+static struct pin_port miso = {.pin=GPIO6, .port=GPIOA};
+static struct pin_port sck = {.pin=GPIO5, .port=GPIOA};
+static struct pin_port ss = {.pin=GPIO1, .port=GPIOA};
+
+static struct pin_port irq = {.pin=GPIO0, .port=GPIOA};
 
 
 
@@ -69,7 +74,7 @@ static void clock_setup(void) {
 
 
 
-
+char recvd;
 
 int main(void) {
 	clock_setup();
@@ -77,17 +82,20 @@ int main(void) {
     
     
     fp_uart = uart_setup();
-    fprintf(fp_uart,"here I am\r\n");
     
-    lora_setup(&lora0,miso,mosi,sck,nss,rst,irq);
-	for(;;); //halt
-	/*
+    lora_setup(&lora0,SPI1,miso,mosi,sck,ss,rst,irq);
+    fprintf(fp_uart,"finished setup!\r\n");
+	
+
+ //halt
+	
     uint8_t buf[255];
     lora_listen(&lora0);
     for(;;){
         for(int i = 0; i<255;i++) buf[i] = 0;
-        if(serial_available(serial0)!=0){
-            uint8_t n = serial_read_until(serial0, buf, sizeof(buf), '\r');
+        if(uart_available()){
+            uart_read_until(USART1, buf, sizeof(buf), '\r');
+            
             lora_load_message(&lora0,buf);
 
 
@@ -96,7 +104,7 @@ int main(void) {
 
             //fprintf(&serial0->iostream,"transmiting\r\n");
             lora_transmit(&lora0);
-            fprintf(fp,"sent: %s\r\n",buf);
+            fprintf(fp_uart,"sent: %s\r\n",buf);
             lora_listen(&lora0);
         }
 
@@ -104,10 +112,10 @@ int main(void) {
         //fprintf(&serial0->iostream,"packet stat: %x\r\n",msg_stat);
 
         if (msg_stat == FIFO_GOOD) {
-            fprintf(fp,"got message: %s\r\n", buf);
+            fprintf(fp_uart,"got message: %s\r\n", buf);
         } else if(msg_stat == FIFO_BAD) {
-            fprintf(fp, "bad packet\r\n");
+            fprintf(fp_uart, "bad packet\r\n");
         }
-        _delay_ms(500);
-    }*/
+        delay_nops(1000000);
+    }
 }
