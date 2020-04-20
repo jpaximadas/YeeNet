@@ -1,5 +1,3 @@
-![yee](yee.jpg)
-
 # Instructions
  1. make -C libopencm3 # (Only needed once)
  2. make -C my-project
@@ -13,3 +11,5 @@ you can fix things by running ```git submodule update --init``` (This is only ne
 
 # How to upload
 * st-flash write awesomesauce.bin 0x8000000 (do not autoreset the MCU--memory will be erased!)
+
+![yee](yee.jpg)
