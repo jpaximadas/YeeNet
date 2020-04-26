@@ -1,4 +1,4 @@
-> :warning: **This software defaults to transmit the 915MHz ISM band legal in the United States. Transmitting on this band may not be legal in your country.**
+> :warning: **This software defaults to transmit on the 915MHz ISM band legal in the United States. Transmitting on this band may not be legal in your country.**
 
 # How to compile
 
