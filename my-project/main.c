@@ -1,32 +1,6 @@
-/**
- * Copyright 2019 Shawn Anastasio
- *
- * This file is part of libminiavr.
- *
- * libminiavr is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, version 3 of the License.
- *
- * libminiavr is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with libminiavr.  If not, see <https://www.gnu.org/licenses/>.
- */
-
-/**
- * This file contains a short example of using libminiavr's UART
- * facilities with both the low-level I/O API and the C stdio API.
- *
- * After uploading the program, interact with it using GNU screen:
- * $ screen /dev/ttyX 115200 8n1
- */
-
 #define DEBUG
 
-#include "lora.h"
+#include "modem_hl.h"
 #include "uart.h"
 #include "util.h"
 
@@ -35,26 +9,41 @@
 #include <libopencm3/stm32/spi.h>
 #include <libopencm3/stm32/usart.h>
 
+#include <stdbool.h>
 
+//debug
+#include "modem_ll.h"
+#include "sx127x.h"
 
+uint8_t buf[255];
 
+static struct modem lora0;
 
-static struct lora_modem lora0;
+static struct modem_hw dev_breadboard = {
+		
+	.spi_interface = SPI1,
+	
+	.rst_port = GPIOB,
+	.rst_pin = GPIO9,
+	
+	.mosi_port = GPIOA,
+	.mosi_pin = GPIO7,
+	
+	.miso_port = GPIOA,
+	.miso_pin = GPIO6,
+	
+	.sck_port = GPIOA,
+	.sck_pin = GPIO5,
+	
+	.ss_port = GPIOA,
+	.ss_pin = GPIO1,
+	
+	.irq_port = GPIOA,
+	.irq_pin = GPIO0
+	
+};
 
-static struct pin_port rst = {.pin=GPIO9, .port=GPIOB};
-
-static struct pin_port mosi = {.pin=GPIO7, .port=GPIOA};
-static struct pin_port miso = {.pin=GPIO6, .port=GPIOA};
-static struct pin_port sck = {.pin=GPIO5, .port=GPIOA};
-static struct pin_port ss = {.pin=GPIO1, .port=GPIOA};
-
-static struct pin_port irq = {.pin=GPIO0, .port=GPIOA};
-
-
-
-
-
-static void clock_setup(void) {
+void clock_setup() {
 	rcc_clock_setup_in_hse_8mhz_out_72mhz();
 
 	/* Enable GPIOA clock. */
@@ -62,6 +51,9 @@ static void clock_setup(void) {
 	
 	//enable GPIOB clock
 	rcc_periph_clock_enable(RCC_GPIOB);
+	
+	//enable GPIOC clock
+	rcc_periph_clock_enable(RCC_GPIOC);
 
 	rcc_periph_clock_enable(RCC_AFIO);
 
@@ -73,49 +65,53 @@ static void clock_setup(void) {
 }
 
 
+static void my_rx(struct modem *this_modem){
+	//fprintf(fp_uart,"in rx isr\r\n");
+	for(int i = 0; i<255;i++) buf[i] = 0;
+	enum payload_status msg_stat = modem_get_payload(&lora0,buf);
+	this_modem->irq_seen = true;
+	if (msg_stat == PAYLOAD_GOOD) {
+            fprintf(fp_uart,"got message: %s\r\n", buf);
+    } else if(msg_stat == PAYLOAD_BAD) {
+            fprintf(fp_uart, "bad packet: \r\n");
+    } else if(msg_stat == PAYLOAD_EMPTY){
+			fprintf(fp_uart,"empty fifo\r\n");
+	}
+    modem_listen(&lora0);
+}
 
-char recvd;
+static void my_tx(struct modem *this_modem){
+	this_modem->irq_seen = true;
+	//fprintf(fp_uart,"mode at start of my_tx: %x\r\n",lora_read_reg(&lora0,LORA_REG_OP_MODE));
+	if(this_modem->irq_data == LORA_MASK_IRQFLAGS_TXDONE){
+		fprintf(fp_uart,"transmit was successful\r\n");
+	}else{
+		fprintf(fp_uart,"transmit failed!\r\n");
+	}
+	modem_listen(&lora0);
+	//fprintf(fp_uart,"mode at end of my_tx: %x\r\n",lora_read_reg(&lora0,LORA_REG_OP_MODE));
+}
 
 int main(void) {
+	
 	clock_setup();
     // Initalize USART0 at 115200 baud
-    
-    
     fp_uart = uart_setup();
+    fprintf(fp_uart,"start setup\r\n");
     
-    lora_setup(&lora0,SPI1,miso,mosi,sck,ss,rst,irq);
+    modem_setup(&lora0,&my_rx,&my_tx,&dev_breadboard);
+     
     fprintf(fp_uart,"finished setup!\r\n");
-	
-
- //halt
-	
-    uint8_t buf[255];
-    lora_listen(&lora0);
+    
+    modem_listen(&lora0);
+ 
     for(;;){
-        for(int i = 0; i<255;i++) buf[i] = 0;
+        //fprintf(fp_uart,"looping\r\n");
         if(uart_available()){
-            uart_read_until(USART1, buf, sizeof(buf), '\r');
-            
-            lora_load_message(&lora0,buf);
-
-
-            // Wait for IRQ
-
-
-            //fprintf(&serial0->iostream,"transmiting\r\n");
-            lora_transmit(&lora0);
-            fprintf(fp_uart,"sent: %s\r\n",buf);
-            lora_listen(&lora0);
-        }
-
-        enum lora_fifo_status msg_stat = lora_get_packet(&lora0,buf);
-        //fprintf(&serial0->iostream,"packet stat: %x\r\n",msg_stat);
-
-        if (msg_stat == FIFO_GOOD) {
-            fprintf(fp_uart,"got message: %s\r\n", buf);
-        } else if(msg_stat == FIFO_BAD) {
-            fprintf(fp_uart, "bad packet\r\n");
-        }
-        delay_nops(1000000);
+			for(int i = 0; i<255;i++) buf[i] = 0;
+			uart_read_until(USART1, buf, sizeof(buf), '\r');
+			modem_load_and_transmit(&lora0,buf);
+		}
+		delay_nops(10000);
     }
 }

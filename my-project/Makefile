@@ -5,7 +5,8 @@ SHARED_DIR = ../my-common-code
 
 CFILES = main.c
 CFILES += api.c \
-		 lora.c \
+		 modem_hl.c \
+		 modem_ll.c \
 		 uart.c
 AFILES += api-asm.S
 
