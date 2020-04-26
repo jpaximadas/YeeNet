@@ -37,7 +37,7 @@ Once the binary has been uploaded run the following in the the my-project direct
  $ target remote localhost:4242
  $ load awesomesauce.elf
 ```
-A more full explanation can be found here:
+Further GDB on STM reading:
 
 https://www.st.com/resource/en/user_manual/dm00613038-stm32cubeide-stlink-gdb-server-stmicroelectronics.pdf
 
@@ -77,13 +77,13 @@ Development for this project currently uses a bluepill dev board. The following 
 | CS/SS | A1 |
 | RST | B9 |
 
-> :warning: **Do not power the bluepill from more than one voltage source. This will damage the regulator on the PCB.** 
+> :warning: **Do not power the bluepill from more than one voltage source.** This will damage the regulator on the PCB.
 
-> :warning: **Power the SX127x or SX127x dev board with 3.3 volts ONLY. The layout of the pins above routes signals from the SX127x into pins of the bluepill that are not 5 volt tolerant**
+> :warning: **Power the SX127x or SX127x dev board with 3.3 volts ONLY.** The layout of the pins above routes signals from the SX127x into pins of the bluepill that are NOT 5 volt tolerant. The Adafruit SX127x breakout will emit 5 volt logic signals and damage the bluepill if powered from 5 volts.
 ## Recommeded way to power the boards
-1. Power the bluepill from 5 volts from the USB to UART. The bluepill will regulate this down to 5 volts
-2. Power the SX127x from a decent 3.3 volt regulator. The bluepill's 3.3 volt regulator is not good enough for the task. Use the one on your USB to UART if it's present
-3. Leave 3.3 volts on the ST-Link programmer disconnected
+1. Power the bluepill from 5 volts from the USB to UART. The bluepill will regulate this down to 3.3 volts for its own use.
+2. Power the SX127x from a decent 3.3 volt regulator. The bluepill's 3.3 volt regulator is not good enough for the task. Use the one on your USB to UART if it's present.
+3. Leave 3.3 volts on the ST-Link programmer disconnected.
 
 # Notes
 ## SX127x Notes
