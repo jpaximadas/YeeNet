@@ -60,6 +60,7 @@ struct modem {
     void (*tx_done_isr)(struct modem *);
     
     struct modem_hw *hw;
+    struct modulation_config *modulation;
         
 };
 
@@ -72,12 +73,12 @@ bool modem_setup(
 	);
 
 //set the payload for next TX
-void modem_load_payload(struct modem *this_modem, uint8_t msg[LORA_PACKET_SIZE]);
+void modem_load_payload(struct modem *this_modem, uint8_t msg[LORA_PACKET_SIZE], uint8_t length);
 
 //Transmit
 bool modem_transmit(struct modem *this_modem);
 
-bool modem_load_and_transmit(struct modem *this_modem, uint8_t msg[LORA_PACKET_SIZE]);
+bool modem_load_and_transmit(struct modem *this_modem, uint8_t msg[LORA_PACKET_SIZE], uint8_t length);
 
 //Put the modem into RX mode
 bool modem_listen(struct modem *this_modem);
@@ -90,7 +91,10 @@ enum payload_status {
 };
 
 //get the payload from last RX
-enum payload_status modem_get_payload(struct modem *this_modem, uint8_t buf_out[LORA_PACKET_SIZE]);
+enum payload_status modem_get_payload(struct modem *this_modem, uint8_t buf_out[LORA_PACKET_SIZE], uint8_t *length);
 
 //pull a 32 bit integer from the pseudom-random number source
 uint32_t rand_32(void);
+
+//if the header is disabled, length is not accounted for
+uint32_t get_airtime(struct modem *this_modem, uint8_t length);

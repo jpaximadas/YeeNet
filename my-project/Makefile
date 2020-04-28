@@ -7,7 +7,8 @@ CFILES = main.c
 CFILES += api.c \
 		 modem_hl.c \
 		 modem_ll.c \
-		 uart.c
+		 uart.c \
+		 modem_ll_config.c
 AFILES += api-asm.S
 
 # TODO - you will need to edit these two lines!

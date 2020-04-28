@@ -3,9 +3,11 @@
 #include "modem_hl.h"
 
 #include "modem_ll.h"
+#include "modem_ll_config.h"
 #include "uart.h"
 #include "util.h"
 
+#include <sys/types.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,111 +19,6 @@
 #define FXOSC 32000000
 #define FREQ_TO_REG(in_freq) ((uint32_t)(( ((uint64_t)in_freq) << 19) / FXOSC))
 #define REG_TO_FREQ(in_reg) ((uint32_t)((FXOSC*in_reg) >> 19))
-
-#define CUR_MODEM_CONFIG DEFAULT_MODEM_CONFIG
-
-static const uint8_t LONGR_MODEM_CONFIG[][2] = {
-    // Configure PA_BOOST with max power
-    {LORA_REG_PA_CONFIG, 0x8f},
-
-    // Enable overload current protection with max trim
-    {LORA_REG_OCP, 0x3f},
-
-    // Set RegPaDac to 0x87
-    {REG_PA_DAC, 0x87},
-
-    // Set the FIFO RX/TX pointers to 0
-    {LORA_REG_FIFO_TX_BASE_ADDR, 0x00},
-    {LORA_REG_FIFO_RX_BASE_ADDR, 0x00},
-
-    // Set RegModemConfig1 as follows:
-    // Bw = 0b1001 (500kHz)
-    // CodingRate = 0b100 (4/8)
-    // ImplicitHeader = 1
-    {LORA_REG_MODEM_CONFIG_1, 0x99},
-
-    // Set RegModemConfig2 as follows:
-    // SpreadingFactor = 12
-    // TxContinuousMode = 0
-    // RxPayloadCrcOn = 1
-    {LORA_REG_MODEM_CONFIG_2, 0xc4},
-
-    // Set preamble length to 16
-    {LORA_REG_PREAMBLE_MSB, 0x00},
-    {LORA_REG_PREAMBLE_LSB, 0x08},
-
-    // Set payload length and max length to 15
-    //{LORA_REG_PAYLOAD_LENGTH, 0x0f},
-    //{LORA_REG_MAX_PAYLOAD_LENGTH, 0x0f},
-
-    // Disable frequency hopping
-    {LORA_REG_HOP_PERIOD, 0x00},
-
-    // Set DetectionThreshold to 0xA (for SF > 6)
-    {LORA_REG_DETECTION_THRESHOLD, 0x0A},
-
-    // Set DetectionOptimize to 0x3 (for SF > 6)
-    {LORA_REG_DETECT_OPTIMIZE, 0x03},
-
-    // Set the frequency to 915MHz
-    // We can use FREQ_TO_REG() here because it is declared as `constexpr`
-    // and can therefore be evaluated at compile-time
-    {LORA_REG_FR_MSB, (FREQ_TO_REG(915000000) >> 16) & 0b11111111},
-    {LORA_REG_FR_MID, (FREQ_TO_REG(915000000) >> 8) & 0b11111111},
-    {LORA_REG_FR_LSB, FREQ_TO_REG(915000000) & 0b11111111},
-};
-
-static const uint8_t DEFAULT_MODEM_CONFIG[][2] = {
-    // Configure PA_BOOST with max power
-    {LORA_REG_PA_CONFIG, 0x8f},
-
-    // Enable overload current protection with max trim
-    {LORA_REG_OCP, 0x3f},
-
-    // Set RegPaDac to 0x87 (requried for SF=6)
-    {REG_PA_DAC, 0x87},
-
-    // Set the FIFO RX/TX pointers to 0
-    {LORA_REG_FIFO_TX_BASE_ADDR, 0x00},
-    {LORA_REG_FIFO_RX_BASE_ADDR, 0x00},
-
-    // Set RegModemConfig1 as follows:
-    // Bw = 0b1001 (500kHz)
-    // CodingRate = 0b001 (4/5)
-    // ImplicitHeader = 1
-    {LORA_REG_MODEM_CONFIG_1, 0x93},
-
-    // Set RegModemConfig2 as follows:
-    // SpreadingFactor = 6
-    // TxContinuousMode = 0
-    // RxPayloadCrcOn = 1
-    {LORA_REG_MODEM_CONFIG_2, 0x64},
-
-    // Set preamble length to 8
-    {LORA_REG_PREAMBLE_MSB, 0x00},
-    {LORA_REG_PREAMBLE_LSB, 0x08},
-
-    // Set payload length and max length to 255
-    //{LORA_REG_PAYLOAD_LENGTH, 0x0f},
-    //{LORA_REG_MAX_PAYLOAD_LENGTH, 0x0f},
-
-    // Disable frequency hopping
-    {LORA_REG_HOP_PERIOD, 0x00},
-
-    // Set DetectionThreshold to 0xC (for SF = 6)
-    {LORA_REG_DETECTION_THRESHOLD, 0x0c},
-
-    // Set DetectionOptimize to 0x5 (for SF = 6)
-    {LORA_REG_DETECT_OPTIMIZE, 0x05},
-
-    // Set the frequency to 915MHz
-    // We can use FREQ_TO_REG() here because it is declared as `constexpr`
-    // and can therefore be evaluated at compile-time
-    {LORA_REG_FR_MSB, (FREQ_TO_REG(915000000) >> 16) & 0b11111111},
-    {LORA_REG_FR_MID, (FREQ_TO_REG(915000000) >> 8) & 0b11111111},
-    {LORA_REG_FR_LSB, FREQ_TO_REG(915000000) & 0b11111111},
-};
-
 
 bool modem_setup(
 	struct modem *this_modem, 
@@ -171,37 +68,42 @@ bool modem_setup(
 	gpio_set(this_modem->hw->rst_port,this_modem->hw->rst_pin);
 	
 	//fprintf(fp_uart,"lora board reset");
-	
-	lora_write_reg(this_modem, LORA_REG_OP_MODE, MODE_LORA | MODE_SLEEP);
-	
-	
 	//fprintf(fp_uart,"attempting to put lora into sleep mode\r\n");
-    // Change mode LORA + SLEEP
-    if (!lora_write_reg_and_check(this_modem, LORA_REG_OP_MODE, MODE_LORA | MODE_SLEEP, true)) {
-#ifdef DEBUG
+	if(!lora_change_mode(this_modem,SLEEP)){
+		#ifdef DEBUG
         fputs("Failed to enter LORA+SLEEP mode!\r\n", fp_uart);
-#endif
-        return false;
-    }
+		#endif
+	}
 	
-    // Set packet size
-    if (!lora_write_reg_and_check(this_modem, LORA_REG_PAYLOAD_LENGTH, LORA_PACKET_SIZE, false) ||
-        !lora_write_reg_and_check(this_modem, LORA_REG_MAX_PAYLOAD_LENGTH, LORA_PACKET_SIZE, false)) {
-#ifdef DEBUG
-        fprintf(fp_uart, "Failed to set payload size!\n");
-#endif
-        return false;
-    }
+    
+	
+	//assume max power settings
+    //Configure PA_BOOST with max power
+    lora_write_reg_and_check(this_modem,LORA_REG_PA_CONFIG, 0x8f,true);
+    // Enable overload current protection with max trim
+    lora_write_reg_and_check(this_modem,LORA_REG_OCP, 0x3f,true);
+    // Set RegPaDac to 0x87, increases power?
+    lora_write_reg_and_check(this_modem,REG_PA_DAC, 0x87,true);
 
-    // Set registers
-    for (size_t i=0; i<ARRAY_SIZE(CUR_MODEM_CONFIG); i++) {
-        if (!lora_write_reg_and_check(this_modem, CUR_MODEM_CONFIG[i][0], CUR_MODEM_CONFIG[i][1], false)) {
-#ifdef DEBUG
-            fprintf(fp_uart, "Failed to write reg: 0x%x\r\n", CUR_MODEM_CONFIG[i][0]);
-#endif
-            return false;
-        }
-    }
+    // Set the FIFO RX/TX pointers to 0
+    lora_write_reg(this_modem,LORA_REG_FIFO_TX_BASE_ADDR, 0x00);
+    lora_write_reg(this_modem,LORA_REG_FIFO_RX_BASE_ADDR, 0x00);
+
+    // Disable frequency hopping
+    lora_write_reg(this_modem,LORA_REG_HOP_PERIOD, 0x00);
+
+    //Set frequency
+    /*
+    lora_write_reg(this_modem,LORA_REG_FR_MSB, (FREQ_TO_REG(915000000) >> 16) & 0b11111111);
+    lora_write_reg(this_modem,LORA_REG_FR_MID, (FREQ_TO_REG(915000000) >> 8) & 0b11111111);
+    lora_write_reg(this_modem,LORA_REG_FR_LSB, FREQ_TO_REG(915000000) & 0b11111111);
+    */
+    lora_write_reg(this_modem,LORA_REG_FR_MSB, (FREQ_TO_REG(915000000) >> 16) & 0b11111111);
+    lora_write_reg(this_modem,LORA_REG_FR_MID, (FREQ_TO_REG(915000000) >> 8) & 0b11111111);
+    lora_write_reg(this_modem,LORA_REG_FR_LSB, FREQ_TO_REG(915000000) & 0b11111111);
+    fprintf(fp_uart,"starting modulation config\r\n");
+    lora_config_modulation(this_modem,&default_modulation);
+    
 
 #ifdef DEBUG
     fprintf(fp_uart,"Starting RNG generation\n\r");
@@ -215,9 +117,22 @@ uint32_t rand_32(void) {
 }
 
 //this function will put the lora into a standby mode
-void modem_load_payload(struct modem *this_modem, uint8_t msg[LORA_PACKET_SIZE]) {
+void modem_load_payload(struct modem *this_modem, uint8_t msg[LORA_PACKET_SIZE], uint8_t length) {
 	lora_change_mode(this_modem,STANDBY);
-    lora_write_fifo(this_modem, msg, LORA_PACKET_SIZE, 0);
+	
+	 if(this_modem->modulation->header_enabled){ //explicit header mode
+        lora_write_reg(this_modem,LORA_REG_PAYLOAD_LENGTH, length); //inform lora of payload length
+        lora_write_fifo(this_modem, msg, LORA_PACKET_SIZE, 0);
+    } else { //fixed length, implicit mode
+#ifdef DEBUG
+        if(length>this_modem->modulation->payload_length){
+            fprintf(fp_uart,"input to load_payload too long--excess will not be transmitted");
+        }
+#endif
+		lora_write_fifo(this_modem, msg, this_modem->modulation->payload_length, 0);
+    }
+
+    
 }
 
 bool modem_transmit(struct modem *this_modem) {
@@ -225,8 +140,8 @@ bool modem_transmit(struct modem *this_modem) {
     return lora_change_mode(this_modem,TX);
 }
 
-bool modem_load_and_transmit(struct modem *this_modem, uint8_t msg[LORA_PACKET_SIZE]) {
-    modem_load_payload(this_modem,msg);
+bool modem_load_and_transmit(struct modem *this_modem, uint8_t msg[LORA_PACKET_SIZE], uint8_t length) {
+    modem_load_payload(this_modem,msg,length);
     return modem_transmit(this_modem);
 }
 
@@ -236,7 +151,7 @@ bool modem_listen(struct modem *this_modem) {
 }
 
 //this function will put the lora into a standby mode
-enum payload_status modem_get_payload(struct modem *this_modem, uint8_t buf_out[LORA_PACKET_SIZE]) {
+enum payload_status modem_get_payload(struct modem *this_modem, uint8_t buf_out[LORA_PACKET_SIZE], uint8_t *length) {
 	
     uint8_t data = this_modem->irq_data;
     if (this_modem->irq_seen || (this_modem->cur_irq_type != RX_DONE)){
@@ -245,15 +160,27 @@ enum payload_status modem_get_payload(struct modem *this_modem, uint8_t buf_out[
 	lora_change_mode(this_modem,STANDBY); //put the lora into standby mode for reg read
 	enum payload_status retval = PAYLOAD_GOOD;
 	
-    if (!(data & LORA_MASK_IRQFLAGS_RXDONE))
+    if (!(data & LORA_MASK_IRQFLAGS_RXDONE)){
         retval = PAYLOAD_EMPTY;
-
-    if (data & LORA_MASK_IRQFLAGS_PAYLOADCRCERROR)
+	}
+	
+    if (data & LORA_MASK_IRQFLAGS_PAYLOADCRCERROR){
         retval = PAYLOAD_BAD;
-
+	}
+	
+	if (this_modem->modulation->header_enabled) { //explicit header mode, variables length
+		*length = lora_read_reg(this_modem,LORA_REG_RX_NB_BYTES);
+	} else { //implicit header mode, fixed length
+		*length = this_modem->modulation->payload_length;
+	}
+	
     // FIFO contains valid packet, return it
     uint8_t ptr = lora_read_reg(this_modem, LORA_REG_FIFO_RX_CUR_ADDR);
     //lora_write_reg(this_modem, LORA_REG_OP_MODE,MODE_LORA | MODE_STDBY);
-    lora_read_fifo(this_modem, buf_out, LORA_PACKET_SIZE, ptr);
+    lora_read_fifo(this_modem, buf_out, *length, ptr);
     return retval;
+}
+
+uint32_t get_airtime(struct modem *this_modem, uint8_t length){
+	
 }

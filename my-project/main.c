@@ -67,11 +67,13 @@ void clock_setup() {
 
 static void my_rx(struct modem *this_modem){
 	//fprintf(fp_uart,"in rx isr\r\n");
+	uint8_t recv_len;
 	for(int i = 0; i<255;i++) buf[i] = 0;
-	enum payload_status msg_stat = modem_get_payload(&lora0,buf);
+	enum payload_status msg_stat = modem_get_payload(&lora0,buf,&recv_len);
 	this_modem->irq_seen = true;
 	if (msg_stat == PAYLOAD_GOOD) {
             fprintf(fp_uart,"got message: %s\r\n", buf);
+            fprintf(fp_uart,"length, %u\r\n",recv_len);
     } else if(msg_stat == PAYLOAD_BAD) {
             fprintf(fp_uart, "bad packet: \r\n");
     } else if(msg_stat == PAYLOAD_EMPTY){
@@ -92,6 +94,8 @@ static void my_tx(struct modem *this_modem){
 	//fprintf(fp_uart,"mode at end of my_tx: %x\r\n",lora_read_reg(&lora0,LORA_REG_OP_MODE));
 }
 
+uint8_t send_len;
+
 int main(void) {
 	
 	clock_setup();
@@ -108,9 +112,11 @@ int main(void) {
     for(;;){
         //fprintf(fp_uart,"looping\r\n");
         if(uart_available()){
+			
 			for(int i = 0; i<255;i++) buf[i] = 0;
-			uart_read_until(USART1, buf, sizeof(buf), '\r');
-			modem_load_and_transmit(&lora0,buf);
+			send_len = uart_read_until(USART1, buf, sizeof(buf), '\r');
+			fprintf(fp_uart,"packet size: %u\r\n", send_len);
+			modem_load_and_transmit(&lora0,buf,send_len);
 		}
 		delay_nops(10000);
     }

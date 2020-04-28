@@ -72,14 +72,15 @@ FILE *uart_setup(void) {
 	return fp;
 }
 
-void uart_read_until(uint32_t usart, uint8_t *buf_out, int n, char last){
-	int pos = 0;
+uint8_t uart_read_until(uint32_t usart, uint8_t buf_out[256], int n, char last){
+	uint8_t pos = 0;
 	bool reached_end = false;
-	while(pos < n && !reached_end){
+	while(pos < n && !reached_end && pos!=255){
 		buf_out[pos] = usart_recv_blocking(usart);
 		reached_end = (buf_out[pos] == last);
 		pos++;
 		
 	}
+	return pos;
 	
 }
