@@ -85,6 +85,13 @@ Development for this project currently uses a bluepill dev board. The following 
 2. Power the SX127x from a decent 3.3 volt regulator. The bluepill's 3.3 volt regulator is not good enough for the task. Use the one on your USB to UART if it's present.
 3. Leave 3.3 volts on the ST-Link programmer disconnected.
 
+# TODO
+1. Create a ```start_timer()``` and ```stop_timer()``` function for measuring airtime
+2. Resolve the discrepancy between calculated and measured airtime
+3. Investigate "LNA boost 150% current" and LNA features in general
+4. Add a function to check if the modem is busy in modem_hl.c
+5. Add a function to get last packet RSSI
+
 # Notes
 ## SX127x Notes
 * The reset pin on the adafruit breakout board must be held LOW in order for the device to function, contrary to the instructions on the adafruit website.
