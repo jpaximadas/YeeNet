@@ -213,8 +213,9 @@ bool lora_write_reg_and_check(struct modem *this_modem, uint8_t reg, uint8_t val
 void lora_config_modulation(struct modem *this_modem, struct modulation_config *modulation){
     uint8_t temp = 0;
     temp |= ((uint8_t) modulation->bandwidth) << 4; //set top nibble for bandwidth
-    temp |= ((uint8_t) modulation->coding_rate) << 1; //set top 3 bits of bottom nibble for coding rate
+    temp |= (((uint8_t) modulation->coding_rate)+1) << 1; //set top 3 bits of bottom nibble for coding rate
     if (!(modulation->header_enabled)) temp |= 1; //set bottom bit to indicate header mode
+    //fprintf(fp_uart,"reg modem config 1:%x\r\n",temp);
     lora_write_reg(this_modem,LORA_REG_MODEM_CONFIG_1,temp);
 
     temp = 0;
@@ -237,12 +238,15 @@ void lora_config_modulation(struct modem *this_modem, struct modulation_config *
         lora_write_reg(this_modem,LORA_REG_DETECT_OPTIMIZE, 0x03);
     }
 	//handle data rate optimize
-	float SF_pw = 2^( (uint8_t) ((modulation->spreading_factor)+6) );
-	float BW = get_chiprate(modulation->bandwidth);
-	float symbol_time = SF_pw/BW;
+	uint32_t SF_pw = 0x1 << ( (uint32_t) ((modulation->spreading_factor)+6) );
+	uint32_t BW = get_chiprate(modulation->bandwidth);
+	uint32_t symbol_time = (uint32_t) (((double) SF_pw / (double) BW)*1E6);
+	
+	fprintf(fp_uart,"symbol time %lu\r\n",symbol_time);
+	
 	uint8_t val = lora_read_reg(this_modem,LORA_REG_MODEM_CONFIG_3);
-	if(symbol_time>.016){
-		fprintf(fp_uart,"symbol time is: %3.6f s. setting data rate optimize register.\r\n",symbol_time);
+	if(symbol_time>16000){
+		fprintf(fp_uart,"setting data rate optimize register\r\n");
 		val = val | 0b00001000;
 	} else {
 		val = val & 0b11110111;

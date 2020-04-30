@@ -109,6 +109,7 @@ bool modem_setup(
     fprintf(fp_uart,"Starting RNG generation\n\r");
 #endif
     seed_random(this_modem);
+    
     return true;
 }
 
@@ -137,6 +138,7 @@ void modem_load_payload(struct modem *this_modem, uint8_t msg[LORA_PACKET_SIZE],
 
 bool modem_transmit(struct modem *this_modem) {
     this_modem->irq_seen = true;
+    fprintf(fp_uart,"tx imminent\r\n");
     return lora_change_mode(this_modem,TX);
 }
 
@@ -181,6 +183,63 @@ enum payload_status modem_get_payload(struct modem *this_modem, uint8_t buf_out[
     return retval;
 }
 
-uint32_t get_airtime(struct modem *this_modem, uint8_t length){
+double ceil(double num) {
+    int32_t inum = (int32_t)num; //cast to floor
+    if (num > (double)inum) { //if floored number is lower than input, add 1
+        inum++;
+    }
+    fprintf(fp_uart,"floored to %lu\r\n",inum);
+    return (double)inum;
+}
+
+uint32_t get_airtime(struct modem *this_modem,uint8_t payload_bytes){
+	int32_t implicit_header = 1; //implicit header = 0 when header is enabled (sx127x datasheet pg 31) (yes, really)
+	if(!(this_modem->modulation->header_enabled)){
+		//implicit header mode, ignore length parameter
+		implicit_header = 0;
+		payload_bytes = this_modem->modulation->payload_length;
+	}
 	
+	uint32_t spreading_factor = (this_modem->modulation->spreading_factor) + 6;
+	
+	uint32_t SF_pw = 0x1 << ( spreading_factor );
+	uint32_t BW = get_chiprate(this_modem->modulation->bandwidth);
+	double symbol_time = ((double) SF_pw / (double) BW);
+	uint32_t symbol_time_usec = (uint32_t) (symbol_time*1E6); //symbol length in us
+	
+	fprintf(fp_uart,"symbol time usec %lu",symbol_time_usec);
+	
+	uint32_t low_data_rate_optimize;
+	//test ? false : true
+	(symbol_time_usec>16000) ? (low_data_rate_optimize = 1) : (low_data_rate_optimize = 0);
+	
+	uint32_t crc;
+	//test ? false : true
+	(this_modem->modulation->crc_enabled) ? (crc = 1) : (crc = 0);
+	//fprintf
+	
+	uint32_t coding_rate = ((uint32_t) this_modem->modulation->coding_rate)+1;
+	
+	uint32_t n_preamble = this_modem->modulation->preamble_length; //number of preamble symbols
+	
+	
+	//just an intermediate step
+	double n_payload = ((double) (8*payload_bytes - 4*spreading_factor + 28 + 16*crc - 20*implicit_header)) / ( (double) (4*(spreading_factor-2*low_data_rate_optimize)) );
+	
+	n_payload = ceil(n_payload) * ( ((double) coding_rate) + 4.0 );
+
+	if( n_payload< 0.0){
+		n_payload = 0.0;
+	}
+	
+	n_payload = n_payload + 8.0;
+	fprintf(fp_uart,"symbols in payload:%lu\r\n",(uint32_t)(n_payload));
+	
+	double payload_time = n_payload * symbol_time;
+	
+	double preamble_time = ((double)n_preamble + 4.25F)*symbol_time;
+	
+	double packet_time = payload_time + preamble_time;
+	
+	return ( (uint32_t) (packet_time*1E6) );
 }
