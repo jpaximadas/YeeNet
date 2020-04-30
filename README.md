@@ -92,7 +92,9 @@ Development for this project currently uses a bluepill dev board. The following 
 * In order to clear the IRQ flags register, zeros must be written twice over SPI. This is  a hardware bug.
 * When putting the SX127x into LoRa mode, it must be put into the SLEEP mode first. Not STANDBY or any other modes.
 * The SPI master may not write to the FIFO outside of STANDBY mode
-* The FIFO is cleared in almost all mode change events aside from RX->STANBY or STANDBY->TX. For a full list consult page 67 of the SX127x datasheet.
+* The FIFO is not always cleared during a mode change. Never assume the FIFO is automatically cleared
+* Explicit header mode in SF=6 does not work. The automatic modulation config function in this software will not reject that modulation config.
+* This code does not touch the "sync word" byte that lets LoRas reject packets automatically.
 ## Bluepill Dev Board Notes
 * The PC13 LED on the "bluepill" dev board has it's ANODE tied to 3.3 volts and it's CATHODE tied to PC13 (for some reason). This means PC13 must be pulled low to turn on the LED.
 * Do not attempt to power the SX127x from the bluepill's 3.3 volt supply. The on-board regulator cannot accomplish the task during RX or TX. Your SX127x will brown out and reset.
