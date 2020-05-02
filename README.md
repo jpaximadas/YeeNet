@@ -68,12 +68,12 @@ Development for this project currently uses a bluepill dev board. The following 
 
 | Function | Bluepill Pin |
 |---|---|
-| Serial TX | A9 |
-| Serial RX | A10 |
-| IRQ | A0 |
+| Serial TX | PA9 |
+| Serial RX | PA10 |
+| IRQ | PA0 |
 | MOSI | PA7 |
-| MISO | PA8 |
-| SCK | PA9 |
+| MISO | PA6 |
+| SCK | PA5 |
 | CS/SS | A1 |
 | RST | B9 |
 
