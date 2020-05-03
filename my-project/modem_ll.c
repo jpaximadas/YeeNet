@@ -227,10 +227,7 @@ void lora_config_modulation(struct modem *this_modem, struct modulation_config *
     //set preamble length
     uint8_t bot = (uint8_t) modulation->preamble_length;
     uint8_t top = (uint8_t) (modulation->preamble_length >> 8);
-    fprintf(fp_uart,"preamble msb:%x",top);
-    fprintf(fp_uart,"preamble lsb:%x",bot);
     
-   
     lora_write_reg(this_modem,LORA_REG_PREAMBLE_MSB,top);
     lora_write_reg(this_modem,LORA_REG_PREAMBLE_LSB,bot);
 
