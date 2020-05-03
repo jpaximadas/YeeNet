@@ -78,9 +78,9 @@ bool modem_setup(
 void modem_load_payload(struct modem *this_modem, uint8_t msg[LORA_PACKET_SIZE], uint8_t length);
 
 //Transmit
-bool modem_transmit(struct modem *this_modem);
+void modem_transmit(struct modem *this_modem);
 
-bool modem_load_and_transmit(struct modem *this_modem, uint8_t msg[LORA_PACKET_SIZE], uint8_t length);
+void modem_load_and_transmit(struct modem *this_modem, uint8_t msg[LORA_PACKET_SIZE], uint8_t length);
 
 //Put the modem into RX mode
 bool modem_listen(struct modem *this_modem);
@@ -102,3 +102,9 @@ uint32_t rand_32(void);
 uint32_t get_airtime(struct modem *this_modem, uint8_t payload_length);
 
 uint32_t get_last_airtime(struct modem *this_modem);
+
+bool modem_is_clear(struct modem *this_modem);
+
+int32_t get_last_payload_rssi(struct modem *this_modem);
+
+double get_last_payload_snr(struct modem *this_modem);

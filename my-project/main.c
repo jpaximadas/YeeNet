@@ -11,6 +11,7 @@
 #include <libopencm3/stm32/timer.h>
 
 #include <stdbool.h>
+#include <stdlib.h>
 
 //debug
 #include "modem_ll.h"
@@ -77,11 +78,20 @@ static void my_rx(struct modem *this_modem){
 	this_modem->irq_seen = true;
 	if (msg_stat == PAYLOAD_GOOD) {
             fprintf(fp_uart,"got message: %s\r\n", buf);
-            fprintf(fp_uart,"length, %u\r\n",recv_len);
+            fprintf(fp_uart,"length: %u\r\n",recv_len);
+            
     } else if(msg_stat == PAYLOAD_BAD) {
-            fprintf(fp_uart, "bad packet: \r\n");
+            fprintf(fp_uart, "bad packet\r\n");
     } else if(msg_stat == PAYLOAD_EMPTY){
 			fprintf(fp_uart,"empty fifo\r\n");
+	}
+	
+	if(msg_stat != PAYLOAD_EMPTY){
+		fprintf(fp_uart,"RSSI: %ld dB\r\n",get_last_payload_rssi(&lora0));
+        double snr = get_last_payload_snr(&lora0);
+        int32_t snr_floored = (int32_t)snr;
+        int32_t snr_decimals = abs((int32_t)((snr - ((double)snr_floored))*100.0));
+        fprintf(fp_uart,"SNR: %ld.%ld dB\r\n",snr_floored,snr_decimals);
 	}
     modem_listen(&lora0);
 }
@@ -130,9 +140,14 @@ int main(void) {
 			
 			for(int i = 0; i<255;i++) buf[i] = 0;
 			send_len = uart_read_until(USART1, buf, sizeof(buf), '\r');
+			
 			fprintf(fp_uart,"packet size: %u\r\n", send_len);
 			fprintf(fp_uart,"est. airtime: %lu us\r\n", get_airtime(&lora0,send_len));
-			modem_load_and_transmit(&lora0,buf,send_len);
+			if(modem_is_clear(&lora0)){
+				modem_load_and_transmit(&lora0,buf,send_len);
+			} else {
+				fprintf(fp_uart,"modem is busy!\r\n");
+			}
 		}
 		
 		delay_nops(10000);

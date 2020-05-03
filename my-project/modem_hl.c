@@ -117,6 +117,8 @@ uint32_t rand_32(void) {
 
 //this function will put the lora into a standby mode
 void modem_load_payload(struct modem *this_modem, uint8_t msg[LORA_PACKET_SIZE], uint8_t length) {
+	
+	
 	lora_change_mode(this_modem,STANDBY);
 	
 	 if(this_modem->modulation->header_enabled){ //explicit header mode
@@ -130,20 +132,21 @@ void modem_load_payload(struct modem *this_modem, uint8_t msg[LORA_PACKET_SIZE],
 #endif
 		lora_write_fifo(this_modem, msg, this_modem->modulation->payload_length, 0);
     }
-
+	
     
 }
 
-bool modem_transmit(struct modem *this_modem) {
+void modem_transmit(struct modem *this_modem) {
     this_modem->irq_seen = true;
-    bool status = lora_change_mode(this_modem,TX);
-    timer_reset();
-    return status;
+    lora_change_mode(this_modem,TX);
+	
+    //timer_reset();
+    //return status;
 }
 
-bool modem_load_and_transmit(struct modem *this_modem, uint8_t msg[LORA_PACKET_SIZE], uint8_t length) {
+void modem_load_and_transmit(struct modem *this_modem, uint8_t msg[LORA_PACKET_SIZE], uint8_t length) {
     modem_load_payload(this_modem,msg,length);
-    return modem_transmit(this_modem);
+    modem_transmit(this_modem);
 }
 
 bool modem_listen(struct modem *this_modem) {
@@ -259,3 +262,26 @@ uint32_t get_airtime(struct modem *this_modem,uint8_t payload_length){
 uint32_t get_last_airtime(struct modem *this_modem){
 	return this_modem->last_airtime;
 }
+
+bool modem_is_clear(struct modem *this_modem){
+	uint8_t reg = lora_read_reg(this_modem,LORA_REG_MODEM_STAT);
+	//fprintf(fp_uart,"modem stat reg:0x%x\r\n",reg);
+	if( (reg & 0x3) != 0x0 ){ //ensure signal synced, and signal detected are cleared
+		return false;
+	}
+	if( (lora_read_reg(this_modem,LORA_REG_OP_MODE) & 0x7) == 0x3){
+		return false;
+	}
+	return true;
+}
+
+int32_t get_last_payload_rssi(struct modem *this_modem){
+	int32_t reg = lora_read_reg(this_modem,LORA_REG_PKT_RSSI_VALUE);
+	return -157 + reg; //assume use of HF port see page 112 of lora manual
+}
+
+double get_last_payload_snr(struct modem *this_modem){
+	int32_t reg = lora_read_reg(this_modem,LORA_REG_PKT_SNR_VALUE);
+	return ((double)reg)/4.0;
+}
+
