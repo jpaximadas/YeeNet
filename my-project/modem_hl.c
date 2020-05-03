@@ -191,42 +191,55 @@ double ceil(double num) {
     return (double)inum;
 }
 
-uint32_t get_airtime(struct modem *this_modem,uint8_t payload_bytes){
-	int32_t implicit_header = 1; //implicit header = 0 when header is enabled (sx127x datasheet pg 31) (yes, really)
+uint32_t get_airtime(struct modem *this_modem,uint8_t payload_length){
+	int32_t payload_bytes = (int32_t) payload_length;
+	int32_t implicit_header = 0; //implicit header = 0 when header is enabled
 	if(!(this_modem->modulation->header_enabled)){
-		//implicit header mode, ignore length parameter
-		implicit_header = 0;
+		//header isn't enabled
+		//implicit header mode
+		//IH=1
+		implicit_header = 1;
 		payload_bytes = this_modem->modulation->payload_length;
 	}
 	
-	uint32_t spreading_factor = (this_modem->modulation->spreading_factor) + 6;
+	int32_t spreading_factor = (this_modem->modulation->spreading_factor) + 6;
 	
-	uint32_t SF_pw = 0x1 << ( spreading_factor );
-	uint32_t BW = get_chiprate(this_modem->modulation->bandwidth);
+	int32_t SF_pw = 0x1 << ( spreading_factor );
+	int32_t BW = get_chiprate(this_modem->modulation->bandwidth);
 	double symbol_time = ((double) SF_pw / (double) BW);
-	uint32_t symbol_time_usec = (uint32_t) (symbol_time*1E6); //symbol length in us
+	int32_t symbol_time_usec = (int32_t) (symbol_time*1E6); //symbol length in us
 	
 	//fprintf(fp_uart,"symbol time usec %lu",symbol_time_usec);
 	
-	uint32_t low_data_rate_optimize;
+	int32_t low_data_rate_optimize;
 	//test ? false : true
 	(symbol_time_usec>16000) ? (low_data_rate_optimize = 1) : (low_data_rate_optimize = 0);
 	
-	uint32_t crc;
+	int32_t crc;
 	//test ? false : true
 	(this_modem->modulation->crc_enabled) ? (crc = 1) : (crc = 0);
 	//fprintf
 	
-	uint32_t coding_rate = ((uint32_t) this_modem->modulation->coding_rate)+1;
+	int32_t coding_rate = ((int32_t) this_modem->modulation->coding_rate)+1;
 	
-	uint32_t n_preamble = this_modem->modulation->preamble_length; //number of preamble symbols
+	int32_t n_preamble = this_modem->modulation->preamble_length; //number of preamble symbols
 	
+	/*
+	fprintf(fp_uart,"payload bytes: %lu\r\n",payload_bytes);
+	fprintf(fp_uart,"spreading factor: %lu\r\n",spreading_factor);
+	fprintf(fp_uart,"crc: %lu\r\n",crc);
+	fprintf(fp_uart,"implicit header: %lu\r\n",implicit_header);
+	fprintf(fp_uart,"LDRO: %lu\r\n",low_data_rate_optimize);
+	fprintf(fp_uart,"coding rate: %lu\r\n",coding_rate);
+	*/
 	
 	//just an intermediate step
 	double n_payload = ((double) (8*payload_bytes - 4*spreading_factor + 28 + 16*crc - 20*implicit_header)) / ( (double) (4*(spreading_factor-2*low_data_rate_optimize)) );
 	
+	
 	n_payload = ceil(n_payload) * ( ((double) coding_rate) + 4.0 );
 
+	
 	if( n_payload< 0.0){
 		n_payload = 0.0;
 	}

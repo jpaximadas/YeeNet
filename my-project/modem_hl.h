@@ -99,6 +99,6 @@ enum payload_status modem_get_payload(struct modem *this_modem, uint8_t buf_out[
 uint32_t rand_32(void);
 
 //if the header is disabled, length is not accounted for
-uint32_t get_airtime(struct modem *this_modem, uint8_t length);
+uint32_t get_airtime(struct modem *this_modem, uint8_t payload_length);
 
 uint32_t get_last_airtime(struct modem *this_modem);
