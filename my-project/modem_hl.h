@@ -61,6 +61,8 @@ struct modem {
     
     struct modem_hw *hw;
     struct modulation_config *modulation;
+    
+    uint32_t last_airtime;
         
 };
 
@@ -98,3 +100,5 @@ uint32_t rand_32(void);
 
 //if the header is disabled, length is not accounted for
 uint32_t get_airtime(struct modem *this_modem, uint8_t length);
+
+uint32_t get_last_airtime(struct modem *this_modem);

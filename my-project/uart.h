@@ -12,6 +12,6 @@ FILE *uart_setup(void);
 
 uint8_t uart_read_until(uint32_t usart, uint8_t *buf, int n, char last);
 
-inline static bool uart_available(){
+inline static bool uart_available(void){
 	return USART_SR(USART1) & USART_SR_RXNE;
 }

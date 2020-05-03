@@ -1,5 +1,3 @@
-#define DEBUG
-
 #include "modem_hl.h"
 
 #include "modem_ll.h"
@@ -101,7 +99,7 @@ bool modem_setup(
     lora_write_reg(this_modem,LORA_REG_FR_MSB, (FREQ_TO_REG(915000000) >> 16) & 0b11111111);
     lora_write_reg(this_modem,LORA_REG_FR_MID, (FREQ_TO_REG(915000000) >> 8) & 0b11111111);
     lora_write_reg(this_modem,LORA_REG_FR_LSB, FREQ_TO_REG(915000000) & 0b11111111);
-    fprintf(fp_uart,"starting modulation config\r\n");
+    //fprintf(fp_uart,"starting modulation config\r\n");
     lora_config_modulation(this_modem,&default_modulation);
     
 
@@ -138,8 +136,9 @@ void modem_load_payload(struct modem *this_modem, uint8_t msg[LORA_PACKET_SIZE],
 
 bool modem_transmit(struct modem *this_modem) {
     this_modem->irq_seen = true;
-    fprintf(fp_uart,"tx imminent\r\n");
-    return lora_change_mode(this_modem,TX);
+    bool status = lora_change_mode(this_modem,TX);
+    timer_reset();
+    return status;
 }
 
 bool modem_load_and_transmit(struct modem *this_modem, uint8_t msg[LORA_PACKET_SIZE], uint8_t length) {
@@ -188,7 +187,7 @@ double ceil(double num) {
     if (num > (double)inum) { //if floored number is lower than input, add 1
         inum++;
     }
-    fprintf(fp_uart,"floored to %lu\r\n",inum);
+    //fprintf(fp_uart,"floored to %lu\r\n",inum);
     return (double)inum;
 }
 
@@ -207,7 +206,7 @@ uint32_t get_airtime(struct modem *this_modem,uint8_t payload_bytes){
 	double symbol_time = ((double) SF_pw / (double) BW);
 	uint32_t symbol_time_usec = (uint32_t) (symbol_time*1E6); //symbol length in us
 	
-	fprintf(fp_uart,"symbol time usec %lu",symbol_time_usec);
+	//fprintf(fp_uart,"symbol time usec %lu",symbol_time_usec);
 	
 	uint32_t low_data_rate_optimize;
 	//test ? false : true
@@ -233,7 +232,7 @@ uint32_t get_airtime(struct modem *this_modem,uint8_t payload_bytes){
 	}
 	
 	n_payload = n_payload + 8.0;
-	fprintf(fp_uart,"symbols in payload:%lu\r\n",(uint32_t)(n_payload));
+	//fprintf(fp_uart,"symbols in payload:%lu\r\n",(uint32_t)(n_payload));
 	
 	double payload_time = n_payload * symbol_time;
 	
@@ -242,4 +241,8 @@ uint32_t get_airtime(struct modem *this_modem,uint8_t payload_bytes){
 	double packet_time = payload_time + preamble_time;
 	
 	return ( (uint32_t) (packet_time*1E6) );
+}
+
+uint32_t get_last_airtime(struct modem *this_modem){
+	return this_modem->last_airtime;
 }

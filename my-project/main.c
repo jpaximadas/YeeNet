@@ -9,7 +9,6 @@
 #include <libopencm3/stm32/spi.h>
 #include <libopencm3/stm32/usart.h>
 #include <libopencm3/stm32/timer.h>
-#include <libopencm3/cm3/nvic.h>
 
 #include <stdbool.h>
 
@@ -45,33 +44,7 @@ static struct modem_hw dev_breadboard = {
 	
 };
 
-void timer_enable(){
-	nvic_enable_irq(NVIC_TIM2_IRQ);
-	rcc_periph_reset_pulse(RST_TIM2);
-	timer_set_mode(TIM2,TIM_CR1_CKD_CK_INT,TIM_CR1_CMS_EDGE,TIM_CR1_DIR_UP);
-	timer_disable_preload(TIM2);
-	timer_continuous_mode(TIM2);
-	timer_set_period(TIM2,65535);
-	timer_set_oc_value(TIM2,TIM_OC1,36);
-	timer_enable_counter(TIM2);
-	timer_enable_irq(TIM2, TIM_DIER_CC1IE);
-	
-}
-
-volatile uint32_t timer_val = 0;
-void tim2_isr(void)
-{
-	if (timer_get_flag(TIM2, TIM_SR_CC1IF)) {
-
-		/* Clear compare interrupt flag. */
-		timer_clear_flag(TIM2, TIM_SR_CC1IF);
-
-		timer_val++;
-	}
-}
-
-
-void clock_setup() {
+void clock_setup(void) {
 	rcc_clock_setup_in_hse_8mhz_out_72mhz();
 
 	/* Enable GPIOA clock. */
@@ -118,6 +91,7 @@ static void my_tx(struct modem *this_modem){
 	//fprintf(fp_uart,"mode at start of my_tx: %x\r\n",lora_read_reg(&lora0,LORA_REG_OP_MODE));
 	if(this_modem->irq_data == LORA_MASK_IRQFLAGS_TXDONE){
 		fprintf(fp_uart,"transmit was successful\r\n");
+		fprintf(fp_uart,"measured airtime: %lu us \r\n",get_last_airtime(this_modem));
 	}else{
 		fprintf(fp_uart,"transmit failed!\r\n");
 	}
@@ -130,17 +104,21 @@ uint8_t send_len;
 int main(void) {
 	
 	clock_setup();
-	timer_enable();
-    // Initalize USART0 at 115200 baud
     fp_uart = uart_setup();
     fprintf(fp_uart,"start setup\r\n");
+    timer_setup();
     
     modem_setup(&lora0,&my_rx,&my_tx,&dev_breadboard);
      
     fprintf(fp_uart,"finished setup!\r\n");
     
+    
+    
     modem_listen(&lora0);
- 
+    
+    
+    
+	timer_reset();
     for(;;){
         //fprintf(fp_uart,"looping\r\n");
         
@@ -149,11 +127,10 @@ int main(void) {
 			for(int i = 0; i<255;i++) buf[i] = 0;
 			send_len = uart_read_until(USART1, buf, sizeof(buf), '\r');
 			fprintf(fp_uart,"packet size: %u\r\n", send_len);
-			fprintf(fp_uart,"airtime (us) %lu\r\n", get_airtime(&lora0,send_len));
+			fprintf(fp_uart,"est. airtime: %lu us\r\n", get_airtime(&lora0,send_len));
 			modem_load_and_transmit(&lora0,buf,send_len);
 		}
 		
 		delay_nops(10000);
-		//fprintf(fp_uart,"timer: %lu\r\n",timer_val);
     }
 }
