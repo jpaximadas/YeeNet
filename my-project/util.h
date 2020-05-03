@@ -24,7 +24,7 @@ static inline uint32_t timer_get_micros(void){
 	double micros = systick_counter_latch/71999.0;
 	micros = micros * 1000;
 	uint32_t retval = (ms_latch*1000) + ((uint32_t)micros);
-	return retval-TIMER_OFFSET;
+	return retval;
 }
 
 static inline void timer_reset(void){

@@ -91,7 +91,7 @@ static void my_tx(struct modem *this_modem){
 	//fprintf(fp_uart,"mode at start of my_tx: %x\r\n",lora_read_reg(&lora0,LORA_REG_OP_MODE));
 	if(this_modem->irq_data == LORA_MASK_IRQFLAGS_TXDONE){
 		fprintf(fp_uart,"transmit was successful\r\n");
-		fprintf(fp_uart,"measured airtime: %lu us \r\n",get_last_airtime(this_modem));
+		//fprintf(fp_uart,"measured airtime: %lu us \r\n",get_last_airtime(this_modem));
 	}else{
 		fprintf(fp_uart,"transmit failed!\r\n");
 	}
