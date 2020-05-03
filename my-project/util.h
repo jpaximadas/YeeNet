@@ -1,6 +1,7 @@
 #pragma once
 #include <sys/types.h>
 #include <libopencm3/cm3/systick.h>
+#define TIMER_OFFSET 999
 
 inline static void delay_nops(uint32_t nops){
 	for(uint32_t i = 0; i<nops;i++){
@@ -23,7 +24,7 @@ static inline uint32_t timer_get_micros(void){
 	double micros = systick_counter_latch/71999.0;
 	micros = micros * 1000;
 	uint32_t retval = (ms_latch*1000) + ((uint32_t)micros);
-	return retval;
+	return retval-TIMER_OFFSET;
 }
 
 static inline void timer_reset(void){

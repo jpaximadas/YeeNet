@@ -112,7 +112,11 @@ int main(void) {
      
     fprintf(fp_uart,"finished setup!\r\n");
     
-    
+    /*
+    timer_reset();
+    uint32_t offset = timer_get_micros();
+    fprintf(fp_uart,"timer offset:%lu\r\n",offset);
+    */
     
     modem_listen(&lora0);
     
