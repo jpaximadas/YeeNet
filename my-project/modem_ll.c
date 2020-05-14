@@ -16,7 +16,7 @@
 #include <libopencm3/stm32/exti.h>
 #include <libopencm3/stm32/usart.h> //debug
 
-#define MAX_PAYLOAD_LENGTH 255
+#define MAX_PAYLOAD_LENGTH 255 //somewhere in the modem implementation, this must be defined for higher layers to work
 
 //static struct modem *exti0_modem;
 

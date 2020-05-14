@@ -81,7 +81,7 @@ bool modem_setup(
     // Enable overload current protection with max trim
     lora_write_reg_and_check(this_modem,LORA_REG_OCP, 0x3f,true);
     // Set RegPaDac to 0x87, increases power?
-    lora_write_reg_and_check(this_modem,REG_PA_DAC, 0x87,true);
+    lora_write_reg_and_check(this_modem,REG_PA_DAC, 0x84,true);
 
     // Set the FIFO RX/TX pointers to 0
     lora_write_reg(this_modem,LORA_REG_FIFO_TX_BASE_ADDR, 0x00);
@@ -282,6 +282,14 @@ int32_t get_last_payload_rssi(struct modem *this_modem){
 
 double get_last_payload_snr(struct modem *this_modem){
 	int32_t reg = lora_read_reg(this_modem,LORA_REG_PKT_SNR_VALUE);
-	return ((double)reg)/4.0;
+	double snr = ((double)reg)/4.0;
+	if(reg>=0){
+		return snr;
+	} else {
+		return ((double)get_last_payload_rssi(this_modem)) + snr;
+	}
 }
 
+bool payload_length_is_fixed(struct modem *this_modem){
+	return !(this_modem->moodulation->header_enabled);
+}
