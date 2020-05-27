@@ -3,6 +3,8 @@
 #include "modem_hl.h"
 #include "uart.h"
 #include "util.h"
+#include "callback_timer.h"
+#include "address.h"
 
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
@@ -111,35 +113,43 @@ static void my_tx(struct modem *this_modem){
 
 uint8_t send_len;
 
+callback_id_t id;
+
+char greeting[3] = "hi";
+
+
+void hop(void *param){
+	char *str = (char *) param;
+	fprintf(fp_uart,"%s\r\n",str);
+	add_timed_callback(1000, &hop, &greeting, &id);
+}
+
 int main(void) {
 	
 	clock_setup();
     fp_uart = uart_setup();
     fprintf(fp_uart,"start setup\r\n");
-    timer_setup();
+    callback_timer_setup();
     
     modem_setup(&lora0,&my_rx,&my_tx,&dev_breadboard);
-     
+    
+	local_address_setup();
+	fprintf(fp_uart,"Local address: %x\r\n",local_address_get());
+    
     fprintf(fp_uart,"finished setup!\r\n");
     
-    /*
-    timer_reset();
-    uint32_t offset = timer_get_micros();
-    fprintf(fp_uart,"timer offset:%lu\r\n",offset);
-    */
+    //hop(&greeting);
     
     modem_listen(&lora0);
     
     
-    
-	timer_reset();
     for(;;){
         //fprintf(fp_uart,"looping\r\n");
         
         if(uart_available()){
 			
 			for(int i = 0; i<255;i++) buf[i] = 0;
-			send_len = uart_read_until(USART1, buf, sizeof(buf), '\r');
+			send_len = uart_read_until(USART1, buf, sizeof(buf), '\r')-1;
 			
 			fprintf(fp_uart,"packet size: %u\r\n", send_len);
 			fprintf(fp_uart,"est. airtime: %lu us\r\n", get_airtime(&lora0,send_len));
