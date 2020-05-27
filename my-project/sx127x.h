@@ -1,4 +1,4 @@
-#define LORA_PACKET_SIZE 255
+#define MAX_PAYLOAD_LENGTH 255 //somewhere in the modem implementation, this must be defined for higher layers to work
 
 #define WRITE_MASK 0x80
 
