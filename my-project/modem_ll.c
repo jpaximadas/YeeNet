@@ -16,15 +16,14 @@
 #include <libopencm3/stm32/exti.h>
 #include <libopencm3/stm32/usart.h> //debug
 
-#define MAX_PAYLOAD_LENGTH 255 //somewhere in the modem implementation, this must be defined for higher layers to work
+
 
 //static struct modem *exti0_modem;
 
 struct modem * volatile exti0_modem  = NULL;
 
 void exti0_isr(void) {
-	uint32_t timer_latch = timer_get_micros();
-	exti_reset_request(EXTI0); //must always be first
+	
 	//fprintf(fp_uart,"got interrupt\r\n");
     exti0_modem->irq_data = lora_read_reg(exti0_modem, LORA_REG_IRQFLAGS);
 
@@ -32,14 +31,13 @@ void exti0_isr(void) {
     lora_write_reg(exti0_modem, LORA_REG_IRQFLAGS, 0xFF);
 
     exti0_modem->irq_seen = false;
-    exti0_modem->last_airtime = timer_latch;
     
     switch(exti0_modem->cur_irq_type){
 		case RX_DONE:
-			(*(exti0_modem->rx_done_isr))(exti0_modem);
+			(*(exti0_modem->rx_callback))(exti0_modem);
 			break;
 		case TX_DONE:
-			(*(exti0_modem->tx_done_isr))(exti0_modem);
+			(*(exti0_modem->tx_callback))(exti0_modem);
 			break;
 		case INVALID:
 			//#ifdef DEBUG
@@ -47,8 +45,7 @@ void exti0_isr(void) {
 			//#endif
 			break;
 	}
-    //fprintf(fp_uart,"irq data %x\r\n",exti0_modem->irq_data);
-    
+    exti_reset_request(EXTI0); //must always be first
 }
 
 void spi_setup(struct modem *this_modem) {
@@ -241,7 +238,7 @@ void lora_config_modulation(struct modem *this_modem, struct modulation_config *
     }
 	//handle data rate optimize
 	uint32_t SF_pw = 0x1 << ( (uint32_t) ((modulation->spreading_factor)+6) );
-	uint32_t BW = get_chiprate(modulation->bandwidth);
+	uint32_t BW = get_bandwidth(modulation->bandwidth);
 	uint32_t symbol_time = (uint32_t) (((double) SF_pw / (double) BW)*1E6);
 #ifdef DEBUG
 	fprintf(fp_uart,"symbol time %lu\r\n",symbol_time);

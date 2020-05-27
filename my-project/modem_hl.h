@@ -56,31 +56,29 @@ struct modem {
     volatile bool irq_seen;
     enum irq_mode cur_irq_type;
     
-    void (*rx_done_isr)(struct modem *);
-    void (*tx_done_isr)(struct modem *);
+    void (*rx_callback)(struct modem *);
+    void (*tx_callback)(struct modem *);
     
     struct modem_hw *hw;
     struct modulation_config *modulation;
-    
-    uint32_t last_airtime;
         
 };
 
 //set up the modem
 bool modem_setup(
 	struct modem *this_modem, 
-	void (*this_rx_isr)(struct modem *),
-	void (*this_tx_isr)(struct modem *),
+	void (*_rx_callback)(struct modem *),
+	void (*_tx_callback)(struct modem *),
 	struct modem_hw *hw
 	);
 
 //set the payload for next TX
-void modem_load_payload(struct modem *this_modem, uint8_t msg[LORA_PACKET_SIZE], uint8_t length);
+void modem_load_payload(struct modem *this_modem, uint8_t msg[MAX_PAYLOAD_LENGTH], uint8_t length);
 
 //Transmit
 void modem_transmit(struct modem *this_modem);
 
-void modem_load_and_transmit(struct modem *this_modem, uint8_t msg[LORA_PACKET_SIZE], uint8_t length);
+void modem_load_and_transmit(struct modem *this_modem, uint8_t msg[MAX_PAYLOAD_LENGTH], uint8_t length);
 
 //Put the modem into RX mode
 bool modem_listen(struct modem *this_modem);
@@ -93,7 +91,7 @@ enum payload_status {
 };
 
 //get the payload from last RX
-enum payload_status modem_get_payload(struct modem *this_modem, uint8_t buf_out[LORA_PACKET_SIZE], uint8_t *length);
+enum payload_status modem_get_payload(struct modem *this_modem, uint8_t buf_out[MAX_PAYLOAD_LENGTH], uint8_t *length);
 
 //pull a 32 bit integer from the pseudom-random number source
 uint32_t rand_32(void);
@@ -101,10 +99,10 @@ uint32_t rand_32(void);
 //if the header is disabled, length is not accounted for
 uint32_t get_airtime(struct modem *this_modem, uint8_t payload_length);
 
-uint32_t get_last_airtime(struct modem *this_modem);
-
 bool modem_is_clear(struct modem *this_modem);
 
 int32_t get_last_payload_rssi(struct modem *this_modem);
 
 double get_last_payload_snr(struct modem *this_modem);
+
+bool payload_length_is_fixed(struct modem *this_modem);

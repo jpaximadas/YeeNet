@@ -20,8 +20,8 @@
 
 bool modem_setup(
 	struct modem *this_modem, 
-	void (*this_rx_isr)(struct modem *),
-	void (*this_tx_isr)(struct modem *),
+	void (*_rx_callback)(struct modem *),
+	void (*_tx_callback)(struct modem *),
 	struct modem_hw *hw
 	) {
 	
@@ -39,8 +39,8 @@ bool modem_setup(
 	//fprintf(fp_uart,"set hw pointer\r\n");
 	
 	//set rx/tx done isr function pointers
-	this_modem->rx_done_isr = this_rx_isr;
-	this_modem->tx_done_isr	= this_tx_isr;
+	this_modem->rx_callback = _rx_callback;
+	this_modem->tx_callback = _tx_callback;
 	
 	//fprintf(fp_uart,"set function pointers\r\n");
 	
@@ -116,21 +116,30 @@ uint32_t rand_32(void) {
 }
 
 //this function will put the lora into a standby mode
-void modem_load_payload(struct modem *this_modem, uint8_t msg[LORA_PACKET_SIZE], uint8_t length) {
+void modem_load_payload(struct modem *this_modem, uint8_t msg[MAX_PAYLOAD_LENGTH], uint8_t length) {
 	
-	
+	/*
+	if(length == 0) return;
+	for(int i = 0; i<=length; i++){
+		fprintf(fp_uart,"pos: %x data: %x\r\n",i,msg[i]);
+	}
+	*/
+
 	lora_change_mode(this_modem,STANDBY);
 	
-	 if(this_modem->modulation->header_enabled){ //explicit header mode
-        lora_write_reg(this_modem,LORA_REG_PAYLOAD_LENGTH, length); //inform lora of payload length
-        lora_write_fifo(this_modem, msg, LORA_PACKET_SIZE, 0);
-    } else { //fixed length, implicit mode
+	if(this_modem->modulation->header_enabled){ //explicit header mode
+		lora_write_reg(this_modem,LORA_REG_PAYLOAD_LENGTH, length); //inform lora of payload length
+        lora_write_fifo(this_modem, msg, length, 0);
+     } else { //fixed length, implicit mode
+
+		if(length>this_modem->modulation->payload_length){
+			length = this_modem->modulation->payload_length;
 #ifdef DEBUG
-        if(length>this_modem->modulation->payload_length){
             fprintf(fp_uart,"input to load_payload too long--excess will not be transmitted");
-        }
 #endif
-		lora_write_fifo(this_modem, msg, this_modem->modulation->payload_length, 0);
+        }
+
+		lora_write_fifo(this_modem, msg, length, 0);
     }
 	
     
@@ -144,7 +153,7 @@ void modem_transmit(struct modem *this_modem) {
     //return status;
 }
 
-void modem_load_and_transmit(struct modem *this_modem, uint8_t msg[LORA_PACKET_SIZE], uint8_t length) {
+void modem_load_and_transmit(struct modem *this_modem, uint8_t msg[MAX_PAYLOAD_LENGTH], uint8_t length) {
     modem_load_payload(this_modem,msg,length);
     modem_transmit(this_modem);
 }
@@ -155,7 +164,7 @@ bool modem_listen(struct modem *this_modem) {
 }
 
 //this function will put the lora into a standby mode
-enum payload_status modem_get_payload(struct modem *this_modem, uint8_t buf_out[LORA_PACKET_SIZE], uint8_t *length) {
+enum payload_status modem_get_payload(struct modem *this_modem, uint8_t buf_out[MAX_PAYLOAD_LENGTH], uint8_t *length) {
 	
     uint8_t data = this_modem->irq_data;
     if (this_modem->irq_seen || (this_modem->cur_irq_type != RX_DONE)){
@@ -195,6 +204,7 @@ double ceil(double num) {
 }
 
 uint32_t get_airtime(struct modem *this_modem,uint8_t payload_length){
+	
 	int32_t payload_bytes = (int32_t) payload_length;
 	int32_t implicit_header = 0; //implicit header = 0 when header is enabled
 	if(!(this_modem->modulation->header_enabled)){
@@ -208,7 +218,7 @@ uint32_t get_airtime(struct modem *this_modem,uint8_t payload_length){
 	int32_t spreading_factor = (this_modem->modulation->spreading_factor) + 6;
 	
 	int32_t SF_pw = 0x1 << ( spreading_factor );
-	int32_t BW = get_chiprate(this_modem->modulation->bandwidth);
+	int32_t BW = get_bandwidth(this_modem->modulation->bandwidth);
 	double symbol_time = ((double) SF_pw / (double) BW);
 	int32_t symbol_time_usec = (int32_t) (symbol_time*1E6); //symbol length in us
 	
@@ -259,9 +269,6 @@ uint32_t get_airtime(struct modem *this_modem,uint8_t payload_length){
 	return ( (uint32_t) (packet_time*1E6) );
 }
 
-uint32_t get_last_airtime(struct modem *this_modem){
-	return this_modem->last_airtime;
-}
 
 bool modem_is_clear(struct modem *this_modem){
 	uint8_t reg = lora_read_reg(this_modem,LORA_REG_MODEM_STAT);
@@ -291,5 +298,5 @@ double get_last_payload_snr(struct modem *this_modem){
 }
 
 bool payload_length_is_fixed(struct modem *this_modem){
-	return !(this_modem->moodulation->header_enabled);
+	return !(this_modem->modulation->header_enabled);
 }

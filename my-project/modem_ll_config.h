@@ -14,16 +14,16 @@ enum spreading_factor_setting{
 };
 
 enum bandwidth_setting{
-    chiprate_7800 = 0,
-    chiprate_10400,
-    chiprate_15600,
-    chiprate_20800,
-    chiprate_31250,
-    chiprate_41700,
-    chiprate_62500,
-    chiprate_125000,
-    chiprate_250000,
-    chiprate_500000
+    bandwidth_7800 = 0,
+    bandwidth_10400,
+    bandwidth_15600,
+    bandwidth_20800,
+    bandwidth_31250,
+    bandwidth_41700,
+    bandwidth_62500,
+    bandwidth_125000,
+    bandwidth_250000,
+    bandwidth_500000
 };
 
 enum coding_rate_setting{
@@ -41,9 +41,10 @@ struct modulation_config{
     bool crc_enabled;
     uint16_t preamble_length;
     uint8_t payload_length ; //this doesn't matter if headers are enabled
+    uint32_t airtime;
 };
 
-uint32_t get_chiprate(enum bandwidth_setting chiprate);
+uint32_t get_bandwidth(enum bandwidth_setting bandwidth);
 
 
 extern struct modulation_config default_modulation;
