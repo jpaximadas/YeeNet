@@ -89,6 +89,7 @@ Development for this project currently uses a bluepill dev board. The following 
 
 # TODO
 1. Write and test packet handler
+2. Improve backoff_rng in packet_handler so it doesn't exhaust the entropy pool quickly
 2. Improve organization of hardware setup
 3. Write human readable interface for manipulating all layers
 
