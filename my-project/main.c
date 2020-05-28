@@ -152,7 +152,7 @@ int main(void) {
 			send_len = uart_read_until(USART1, buf, sizeof(buf), '\r')-1;
 			
 			fprintf(fp_uart,"packet size: %u\r\n", send_len);
-			fprintf(fp_uart,"est. airtime: %lu us\r\n", get_airtime(&lora0,send_len));
+			fprintf(fp_uart,"est. airtime: %lu us\r\n", modem_get_airtime_usec(&lora0,send_len));
 			if(modem_is_clear(&lora0)){
 				modem_load_and_transmit(&lora0,buf,send_len);
 			} else {

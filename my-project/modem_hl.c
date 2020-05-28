@@ -111,10 +111,6 @@ bool modem_setup(
     return true;
 }
 
-uint32_t rand_32(void) {
-    return rand();
-}
-
 //this function will put the lora into a standby mode
 void modem_load_payload(struct modem *this_modem, uint8_t msg[MAX_PAYLOAD_LENGTH], uint8_t length) {
 	
@@ -203,7 +199,7 @@ double ceil(double num) {
     return (double)inum;
 }
 
-uint32_t get_airtime(struct modem *this_modem,uint8_t payload_length){
+uint32_t modem_get_airtime_usec(struct modem *this_modem,uint8_t payload_length){
 	
 	int32_t payload_bytes = (int32_t) payload_length;
 	int32_t implicit_header = 0; //implicit header = 0 when header is enabled
