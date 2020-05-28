@@ -94,10 +94,12 @@ enum payload_status {
 enum payload_status modem_get_payload(struct modem *this_modem, uint8_t buf_out[MAX_PAYLOAD_LENGTH], uint8_t *length);
 
 //pull a 32 bit integer from the pseudom-random number source
-uint32_t rand_32(void);
+inline static uint32_t rand_32(void) {
+    return rand();
+}
 
 //if the header is disabled, length is not accounted for
-uint32_t get_airtime(struct modem *this_modem, uint8_t payload_length);
+uint32_t modem_get_airtime_usec(struct modem *this_modem, uint8_t payload_length);
 
 bool modem_is_clear(struct modem *this_modem);
 
