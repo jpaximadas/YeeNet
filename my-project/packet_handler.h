@@ -35,6 +35,7 @@ struct packet_handler{
 	uint8_t errors;
 	callback_id_t my_timed_callback;
 	uint32_t pkt_airtime_ms;
+	uint8_t pkt_length;
 	
 	struct packet_data *tx_pkt;
 	struct packet_data *rx_pkt;
