@@ -76,21 +76,21 @@ Development for this project currently uses a bluepill dev board. The following 
 | SCK | PA5 |
 | CS/SS | A1 |
 | RST | B9 |
+| Address Bit 0 | B10 |
+| Address Bit 1 | B11 |
 
 > :warning: **Do not power the bluepill from more than one voltage source.** This will damage the regulator on the PCB.
 
 > :warning: **Power the SX127x or SX127x dev board with 3.3 volts ONLY.** The layout of the pins above routes signals from the SX127x into pins of the bluepill that are NOT 5 volt tolerant. The Adafruit SX127x breakout will emit 5 volt logic signals and damage the bluepill if powered from 5 volts.
 ## Recommeded way to power the boards
-1. Power the bluepill from 5 volts from the USB to UART. The bluepill will regulate this down to 3.3 volts for its own use.
+1. Power the bluepill from 5 volts from the USB to UART. The bluepill will regulate this down to 3.3 volts for its own use. Alternatively, the bluepill may be powered with 3.3 volts from a regulator on the USB to UART.
 2. Power the SX127x from a decent 3.3 volt regulator. The bluepill's 3.3 volt regulator is not good enough for the task. Use the one on your USB to UART if it's present.
 3. Leave 3.3 volts on the ST-Link programmer disconnected.
 
 # TODO
-1. Create a ```start_timer()``` and ```stop_timer()``` function for measuring airtime
-2. Resolve the discrepancy between calculated and measured airtime
-3. Investigate "LNA boost 150% current" and LNA features in general
-4. Add a function to check if the modem is busy in modem_hl.c
-5. Add a function to get last packet RSSI
+1. Write and test packet handler
+2. Improve organization of hardware setup
+3. Write human readable interface for manipulating all layers
 
 # Notes
 ## SX127x Notes
