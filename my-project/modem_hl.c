@@ -18,14 +18,12 @@
 #define FREQ_TO_REG(in_freq) ((uint32_t)(( ((uint64_t)in_freq) << 19) / FXOSC))
 #define REG_TO_FREQ(in_reg) ((uint32_t)((FXOSC*in_reg) >> 19))
 
-void dummy_callback(struct modem *this_modem){
+void dummy_callback(void * param){
 	return;
 }
 
 bool modem_setup(
 	struct modem *this_modem, 
-	void (*_rx_callback)(struct modem *),
-	void (*_tx_callback)(struct modem *),
 	struct modem_hw *hw
 	) {
 	
@@ -116,7 +114,7 @@ bool modem_setup(
 }
 
 
-bool modem_attach_callbacks(struct modem *this_modem, void (*_rx_callback)(void *), void (*_tx_callback)(void *) , void * _callback_arg){
+void modem_attach_callbacks(struct modem *this_modem, void (*_rx_callback)(void *), void (*_tx_callback)(void *) , void * _callback_arg){
 	//set rx/tx done isr function pointers
 	this_modem->callback_arg = _callback_arg;
 	this_modem->rx_callback = _rx_callback;

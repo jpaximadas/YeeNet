@@ -18,6 +18,7 @@
 
 #include <stdbool.h>
 #include <sys/types.h>
+#include <stdlib.h>
 
 struct modem_hw{
 	
@@ -69,7 +70,7 @@ struct modem {
 bool modem_setup(struct modem *this_modem, struct modem_hw *hw);
 
 //atach callbacks
-bool modem_attach_callbacks(struct modem *this_modem, void (*_rx_callback)(void *), void (*_tx_callback)(void *), void *_callback_arg );
+void modem_attach_callbacks(struct modem *this_modem, void (*_rx_callback)(void *), void (*_tx_callback)(void *), void *_callback_arg );
 
 //set the payload for next TX
 void modem_load_payload(struct modem *this_modem, uint8_t msg[MAX_PAYLOAD_LENGTH], uint8_t length);
