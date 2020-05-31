@@ -100,6 +100,10 @@ Development for this project currently uses a bluepill dev board. The following 
 2. Improve organization of hardware setup
 3. Write human readable interface for manipulating all layers
 
+# Obtaining a breakout board
+The adafruit breakout board can occupy too much space to access all the pins and can be expensive.
+You can purchase a bare breakout board here: https://oshpark.com/shared_projects/1Yl3TOYu and obtain the RFM95 module from aliexpress for under five dollars.
+
 # Notes
 ## SX127x Notes
 * The reset pin on the adafruit breakout board must be held LOW in order for the device to function, contrary to the instructions on the adafruit website.
