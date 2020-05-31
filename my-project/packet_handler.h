@@ -65,13 +65,17 @@ void handler_setup
 	uint8_t _backoffs_max
 	);
 
-bool request_transmit(struct packet_handler *this_handler, struct packet_data *pkt);
+bool handler_request_transmit(struct packet_handler *this_handler, struct packet_data *pkt);
 
-static inline void handler_rx_cleanup(struct packet_handler *this_handler){
+void handler_backoff_retransmit(void * param);
+
+static inline void handler_rx_cleanup(struct packet_handler *this_handler, bool tx_on_cleanup){
+	if(tx_on_cleanup){
+		modem_transmit(this_handler->my_modem);
+	}
 	if(this_handler->tx_snooze){
 		handler_backoff_retransmit(this_handler);
 		this_handler->tx_snooze = false;
 	} 
-	this_handler->wait_for_cleanup = false;
 	modem_listen(this_handler->my_modem);
 }

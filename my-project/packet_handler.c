@@ -7,6 +7,19 @@
 
 #define PACKET_PROCESS_OFFSET_MS 5
 
+void handler_failure(void * param){
+	struct packet_handler *this_handler = (struct packet_handler *) param;
+	this_handler->last_packet_status = SUCCESS;
+	this_handler->my_state = UNLOCKED;
+}
+
+void handler_success(void * param){
+	struct packet_handler *this_handler = (struct packet_handler *) param;
+	remove_timed_callback(this_handler->my_timed_callback);
+	this_handler->last_packet_status = SUCCESS;
+	this_handler->my_state = UNLOCKED;
+}
+
 void handler_post_tx(void * param){
 	struct packet_handler *this_handler = (struct packet_handler *) param;
 	//check if rx cleanup will handle mode change
@@ -20,92 +33,103 @@ void handler_post_tx(void * param){
 void handler_post_rx(void * param){
 	uint8_t recv_len;
 	struct packet_handler *this_handler = (struct packet_handler *) param;
-	enum payload_status stat = modem_get_payload(this_handler->my_modem,this_handler->rx_pkt,&recv_len);
+	enum payload_status stat = modem_get_payload(this_handler->my_modem,(uint8_t *) (this_handler->rx_pkt),&recv_len);
 	this_handler->my_modem->irq_seen = true;
 	switch(stat){
 		case PAYLOAD_EMPTY:
-			this_handler->wait_for_cleanup = true;
-			handler_rx_cleanup(this_handler);
+			handler_rx_cleanup(this_handler, false);
 			return;
 		break;
-		case PAYLOAD_BAD;
-			this_handler->wait_for_cleanup = true;
-			modem_load_and_transmit(this_handler->my_modem,this_handler->my_nack,sizeof(packet_nack));
-			handler_rx_cleanup(this_handler);
+		case PAYLOAD_BAD:
+			modem_load_payload(this_handler->my_modem,(uint8_t *) &(this_handler->my_nack),sizeof(struct packet_nack));
+			handler_rx_cleanup(this_handler, true);
 			return;
 		break;
+		case PAYLOAD_GOOD:
 		default:
 		break;
 	}
 	
+	uint8_t tx_on_cleanup = false;
+
 	//cast top byte to type
-	enum packet_type incoming_type = (enum packet_type) ((uint8_t) this_handler->rx_pkt);
+	enum packet_type incoming_type = (enum packet_type) *((uint8_t *) this_handler->rx_pkt);
 
 	switch(incoming_type){
 		case ACK:
-			struct packet_ack * my_pkt = (struct packet_ack *) this_handler->rx_pkt;
-			if(this_handler->my_state == LOCKED){ //is TX ongoing
+			{
+				struct packet_ack *cur_ack = (struct packet_ack *) (this_handler->rx_pkt);
+				if(this_handler->my_state == LOCKED){ //is TX ongoing
+					
+					if(cur_ack->dest==0x00 || cur_ack->dest==this_handler->my_addr){ //is the packet addressed to this node
 				
-				if(my_pkt->dest==0x00 || my_pkt->dest==this_handler->my_addr){ //is the packet addressed to this node
-			
-					if(this_handler->tx_pkt->type == DATA_ACKED){ //is this node waiting for an ack
+						if(this_handler->tx_pkt->type == DATA_ACKED){ //is this node waiting for an ack
 
-						if(this_handler->tx_pkt->dest == my_pkt->src){ //is this ack from the node being TX'ed to
-				
-							remove_timed_callback(this_handler->my_timed_callback);
-							handler_success(this_handler);
+							if(this_handler->tx_pkt->dest == cur_ack->src){ //is this ack from the node being TX'ed to
+					
+								remove_timed_callback(this_handler->my_timed_callback);
+								handler_success(this_handler);
+							}
 						}
 					}
 				}
+				break;
 			}
-		break;
 
 		case NACK:
-			struct packet_nack * my_pkt = (struct packet_nack *) this_handler->rx_pkt;
-			if(this_handler->my_state == LOCKED){ //is tx ongoing
+			{
+				struct packet_nack *cur_nack = (struct packet_nack *) (this_handler->rx_pkt);
+				if(this_handler->my_state == LOCKED){ //is tx ongoing
 
-				if(this_handler->tx_pkt->dest == my_pkt->src){ //is this nack from the node being TX'ed to
+					if(this_handler->tx_pkt->dest == cur_nack->src){ //is this nack from the node being TX'ed to
 
-					if(this_handler->tx_pkt->type != DATA_ACKED){ //ignore nacks if outgoing packet is acked
+						if(this_handler->tx_pkt->type != DATA_ACKED){ //ignore nacks if outgoing packet is acked
 
-						switch(this_handler->my_send_mode){//different behavior based on send mode
-							case LAZY:
-								remove_timed_callback(this_handler->my_timed_callback);
-								handler_failure(this_handler);
-							break;
-							case PERSISTENT:
-								this_handler->nack_occurred = true;
-							break;
+							switch(this_handler->my_send_mode){//different behavior based on send mode
+								case LAZY:
+									remove_timed_callback(this_handler->my_timed_callback);
+									handler_failure(this_handler);
+								break;
+								case PERSISTENT:
+									this_handler->nack_occurred = true;
+								break;
+							}
 						}
 					}
 				}
+				break;
 			}
-		break;
 
 		case DATA_ACKED:
-			if(my_pkt->dest==0x00 || my_pkt->dest == this_handler->my_addr){
+		{
+				if(this_handler->rx_pkt->dest==0x00 || this_handler->rx_pkt->dest == this_handler->my_addr){
 
-				this_handler->my_ack.dest = my_pkt->src;
-				this_handler->wait_for_cleanup = true;
-				modem_load_and_transmit(this_handler->my_modem,(uint8_t *) this_handler->my_ack,sizeof(struct packet_ack));
-				(*(this_handler->pkt_rdy_callback))(this_handler->callback_arg); //execute packet ready callback
-			}
-		break;
+					this_handler->my_ack.dest = this_handler->rx_pkt->src;
+					tx_on_cleanup = true;
+					modem_load_payload(this_handler->my_modem,(uint8_t *) &(this_handler->my_ack),sizeof(struct packet_ack));
+					(*(this_handler->pkt_rdy_callback))(this_handler->callback_arg); //execute packet ready callback
+				}
+			break;
+		}
 
 		case DATA_UNACKED:
-			if(my_pkt->dest==0x00 || my_pkt->dest == this_handler->my_addr){
+		{
+				if(this_handler->rx_pkt->dest==0x00 || this_handler->rx_pkt->dest == this_handler->my_addr){
 
-				(*(this_handler->pkt_rdy_callback))(this_handler->callback_arg); //execute packet ready callback
-			}
-		break;
+					(*(this_handler->pkt_rdy_callback))(this_handler->callback_arg); //execute packet ready callback
+				}
+			break;
+		}
 
 		default:
-			this_handler->wait_for_cleanup = true;
-			modem_load_and_transmit(this_handler->my_modem,(uint8_t *) this_handler->my_nack,sizeof(struct packet_nack));
-		break;
+		{
+				tx_on_cleanup = true;
+				modem_load_payload(this_handler->my_modem,(uint8_t *) &(this_handler->my_nack),sizeof(struct packet_nack));
+			break;
+		}
 	}
 
-	handler_rx_cleanup(this_handler);
+	handler_rx_cleanup(this_handler,tx_on_cleanup);
 	return;
 }
 
@@ -159,6 +183,11 @@ void handler_setup
 	modem_attach_callbacks(this_handler->my_modem,&handler_post_rx,&handler_post_tx,this_handler);
 }
 
+uint32_t backoff_rng(uint8_t bits){
+	uint32_t mask = 0xffffffff;
+	return rand_32() & mask>>(32-bits);
+}
+
 bool handler_request_transmit(struct packet_handler *this_handler, struct packet_data *pkt){
 	if(this_handler->my_state==LOCKED){ return false;}
 	
@@ -187,13 +216,14 @@ bool handler_request_transmit(struct packet_handler *this_handler, struct packet
 	
 	uint32_t time_ms = 0;
 	switch(this_handler->my_send_mode){
-		LAZY:
+		case LAZY:
 			time_ms = this_handler->pkt_airtime_ms + this_handler->ack_airtime_ms + PACKET_PROCESS_OFFSET_MS;
 			switch(this_handler->tx_pkt->type){
-				DATA_ACKED:
+				//TODO handle add_timed_callback retval
+				case DATA_ACKED:
 					add_timed_callback(time_ms,&handler_failure,this_handler,&(this_handler->my_timed_callback));
 				break;
-				DATA_UNACKED:
+				case DATA_UNACKED:
 					add_timed_callback(time_ms,&handler_success,this_handler,&(this_handler->my_timed_callback));
 				break;
 				default:
@@ -201,29 +231,16 @@ bool handler_request_transmit(struct packet_handler *this_handler, struct packet
 				break;
 			}
 		break;
-		PERSISTENT:
+		case PERSISTENT:
 			this_handler->backoffs = 1;
-			time_ms = backoff_rng(this_handler->backoffs)*(this_handler->pkt_airtime_ms) + this_handler->ack_airtime_ms + PACKET_PROCESS_OFFSET_MS;
+			time_ms = backoff_rng(this_handler->backoffs) * (this_handler->pkt_airtime_ms) + this_handler->ack_airtime_ms + PACKET_PROCESS_OFFSET_MS;
 			add_timed_callback(time_ms,&handler_backoff_retransmit,this_handler,&(this_handler->my_timed_callback));
 
 		break;
 	}
 
 	modem_transmit(this_handler->my_modem);
-
-}
-
-void handler_failure(void * param){
-	struct packet_handler *this_handler = (struct packet_handler *) param;
-	this_handler->last_packet_status = SUCCESS;
-	this_handler->my_state = UNLOCKED;
-}
-
-void handler_success(void * param){
-	struct packet_handler *this_handler = (struct packet_handler *) param;
-	remove_timed_callback(this_handler->my_timed_callback);
-	this_handler->last_packet_status = SUCCESS;
-	this_handler->my_state = UNLOCKED;
+	return true;
 }
 
 void handler_backoff_retransmit(void * param){
@@ -251,7 +268,7 @@ void handler_backoff_retransmit(void * param){
 			return;
 	}
 	
-	modem_load_payload(this_handler->my_modem,this_handler->tx_pkt,this_handler->pkt_length);
+	modem_load_payload(this_handler->my_modem,(uint8_t *) this_handler->tx_pkt,this_handler->pkt_length);
 
 	this_handler->backoffs++;
 	uint32_t time_ms = backoff_rng(this_handler->backoffs) * (this_handler->pkt_airtime_ms) + this_handler->ack_airtime_ms + PACKET_PROCESS_OFFSET_MS;
@@ -261,11 +278,5 @@ void handler_backoff_retransmit(void * param){
 	modem_transmit(this_handler->my_modem);
 
 
-}
-
-
-uint32_t backoff_rng(uint32_t bits){
-	uint32_t mask = 0xffffffff;
-	return rand_32() & mask>>(32-bits);
 }
 

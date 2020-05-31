@@ -5,6 +5,8 @@
 #include "util.h"
 #include "callback_timer.h"
 #include "address.h"
+#include "packet_handler.h"
+#include "packet.h"
 
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
@@ -19,9 +21,11 @@
 #include "modem_ll.h"
 #include "sx127x.h"
 
-uint8_t buf[255];
+
 
 static struct modem lora0;
+
+static struct packet_handler lora0_handler;
 
 static struct modem_hw dev_breadboard = {
 		
@@ -71,6 +75,90 @@ void clock_setup(void) {
 	rcc_periph_clock_enable(RCC_TIM2);
 }
 
+//packet_handler layer tester
+
+#if 1
+
+static struct packet_data incoming_packet;
+
+static struct packet_data outgoing_packet;
+
+void capture_packet(void * param){
+	//struct packet_handler *this_handler = (struct packet_handler *) param;
+	fprintf(fp_uart,"packet received!");
+	fprintf(fp_uart,"source: %x destination: %x \r\n", incoming_packet.src, incoming_packet.dest);
+	fprintf(fp_uart,"contents: %.*s \r\n", incoming_packet.len, (char *) &incoming_packet.data);
+
+	fprintf(fp_uart,"RSSI: %ld dB\r\n",get_last_payload_rssi(&lora0));
+    double snr = get_last_payload_snr(&lora0);
+    int32_t snr_floored = (int32_t)snr;
+    int32_t snr_decimals = abs((int32_t)((snr - ((double)snr_floored))*100.0));
+    fprintf(fp_uart,"SNR: %ld.%ld dB\r\n",snr_floored,snr_decimals);
+}
+
+
+int main(void) {
+	
+	clock_setup();
+    fp_uart = uart_setup();
+
+    fprintf(fp_uart,"start setup...\r\n");
+
+	local_address_setup();
+
+	if(local_address_get()!=1 || local_address_get()!=2){
+		fprintf(fp_uart,"Address must be 1 or 2. Halting execution");
+		for(;;);
+	}
+
+	outgoing_packet.src = local_address_get();
+	outgoing_packet.dest = local_address_get() == 1 ? 2 : 1;
+	outgoing_packet.type = DATA_ACKED;
+
+    callback_timer_setup();
+	modem_setup(&lora0,&dev_breadboard);
+
+	handler_setup(&lora0_handler, &lora0, &incoming_packet, &capture_packet, &lora0_handler, LAZY, 4);
+
+
+	fprintf(fp_uart,"Local address: %x\r\n",local_address_get());
+
+	fprintf(fp_uart,"setup complete\r\n");
+
+	uint8_t send_len;
+
+	for(;;){
+		if(uart_available()){
+			
+			for(int i = 0; i<MAX_PAYLOAD_LENGTH-PACKET_DATA_OVERHEAD;i++) outgoing_packet.data[i] = 0;
+			send_len = uart_read_until(USART1, outgoing_packet.data, MAX_PAYLOAD_LENGTH-PACKET_DATA_OVERHEAD, '\r')-1;
+
+			if(lora0_handler.my_state==UNLOCKED  && handler_request_transmit(&lora0_handler,&outgoing_packet)){
+				fprintf(fp_uart,"packet away\r\n");
+			}else{
+				fprintf(fp_uart,"handler busy, try again\r\n");
+			}
+
+			while(lora0_handler.my_state == LOCKED){
+				fprintf(fp_uart,"waiting for ack...\r\n");
+				delay_nops(100000);
+			}
+
+			if(lora0_handler.last_packet_status==SUCCESS){
+				fprintf(fp_uart,"received ack; exchange successful!");
+			}else{
+				fprintf(fp_uart,"ack never came; exchange failed");
+			}
+		}
+
+	}
+}
+#endif
+
+#if 0
+//modem layer tester
+
+uint8_t buf[255];
 
 static void my_rx(void * param){
 	//fprintf(fp_uart,"in rx isr\r\n");
@@ -166,3 +254,4 @@ int main(void) {
 		delay_nops(10000);
     }
 }
+#endif

@@ -14,6 +14,7 @@
 #include <libopencm3/stm32/spi.h>
 #include <libopencm3/cm3/nvic.h>
 #include <libopencm3/stm32/exti.h>
+#include <libopencm3/cm3/systick.h>
 #include <libopencm3/stm32/usart.h> //debug
 
 
@@ -24,6 +25,9 @@ struct modem * volatile exti0_modem  = NULL;
 
 void exti0_isr(void) {
 	
+    //TODO figure out how to demote systick priority
+    systick_counter_disable();//stop systick from preempting this irq_seen
+
      exti_reset_request(EXTI0); //must always be first
 
 	//fprintf(fp_uart,"got interrupt\r\n");
@@ -48,6 +52,7 @@ void exti0_isr(void) {
 			break;
 	}
    
+   systick_counter_enable();
 }
 
 void spi_setup(struct modem *this_modem) {
@@ -90,6 +95,7 @@ void irq_setup(struct modem *this_modem){
 	//assume EXTI0
 	
 	nvic_enable_irq(NVIC_EXTI0_IRQ); //interrupt on PA0
+    nvic_set_priority(NVIC_EXTI0_IRQ,0);
 	
 	gpio_set_mode(this_modem->hw->irq_port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, this_modem->hw->irq_pin);
 	exti_select_source(EXTI0,this_modem->hw->irq_port);

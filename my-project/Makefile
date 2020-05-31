@@ -11,7 +11,8 @@ CFILES += api.c \
 		  modem_ll_config.c \
 		  util.c\
 		  callback_timer.c \
-		  address.c 
+		  address.c \
+		  packet_handler.c
 AFILES += api-asm.S
 
 # TODO - you will need to edit these two lines!
