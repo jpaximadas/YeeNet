@@ -79,16 +79,23 @@ Development for this project currently uses a bluepill dev board. The following 
 | Address Bit 0 | B10 |
 | Address Bit 1 | B11 |
 
+* Serial TX/RX should connect to a USB/UART chip.
+* IRQ should connect to DIO0 on the SX127x. (May be called D0 or G0 on a breakout board)
+* MOSI,MISO,SCK, and SS should connect from the bluepill to the appropriate pins on the SX127x breakout.
+* RST should connect from the bluepill to the appropriate pin on the SX1276x breakout.
+* Address bits 0 and 1 should run from the bluepill to 3.3v or ground.
+
 > :warning: **Do not power the bluepill from more than one voltage source.** This will damage the regulator on the PCB.
 
 > :warning: **Power the SX127x or SX127x dev board with 3.3 volts ONLY.** The layout of the pins above routes signals from the SX127x into pins of the bluepill that are NOT 5 volt tolerant. The Adafruit SX127x breakout will emit 5 volt logic signals and damage the bluepill if powered from 5 volts.
+
 ## Recommeded way to power the boards
 1. Power the bluepill from 5 volts from the USB to UART. The bluepill will regulate this down to 3.3 volts for its own use. Alternatively, the bluepill may be powered with 3.3 volts from a regulator on the USB to UART.
 2. Power the SX127x from a decent 3.3 volt regulator. The bluepill's 3.3 volt regulator is not good enough for the task. Use the one on your USB to UART if it's present.
 3. Leave 3.3 volts on the ST-Link programmer disconnected.
 
 # TODO
-1. Write and test packet handler
+1. Write and test packet handler (proceeding on packet_handler branch)
 2. Improve backoff_rng in packet_handler so it doesn't exhaust the entropy pool quickly
 2. Improve organization of hardware setup
 3. Write human readable interface for manipulating all layers
