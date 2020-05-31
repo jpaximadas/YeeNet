@@ -24,6 +24,8 @@ struct modem * volatile exti0_modem  = NULL;
 
 void exti0_isr(void) {
 	
+     exti_reset_request(EXTI0); //must always be first
+
 	//fprintf(fp_uart,"got interrupt\r\n");
     exti0_modem->irq_data = lora_read_reg(exti0_modem, LORA_REG_IRQFLAGS);
 
@@ -34,10 +36,10 @@ void exti0_isr(void) {
     
     switch(exti0_modem->cur_irq_type){
 		case RX_DONE:
-			(*(exti0_modem->rx_callback))(exti0_modem);
+			(*(exti0_modem->rx_callback))(exti0_modem->callback_arg);
 			break;
 		case TX_DONE:
-			(*(exti0_modem->tx_callback))(exti0_modem);
+			(*(exti0_modem->tx_callback))(exti0_modem->callback_arg);
 			break;
 		case INVALID:
 			//#ifdef DEBUG
@@ -45,7 +47,7 @@ void exti0_isr(void) {
 			//#endif
 			break;
 	}
-    exti_reset_request(EXTI0); //must always be first
+   
 }
 
 void spi_setup(struct modem *this_modem) {

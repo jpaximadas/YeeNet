@@ -72,8 +72,9 @@ void clock_setup(void) {
 }
 
 
-static void my_rx(struct modem *this_modem){
+static void my_rx(void * param){
 	//fprintf(fp_uart,"in rx isr\r\n");
+	struct modem * this_modem = (struct modem *)param;
 	uint8_t recv_len;
 	for(int i = 0; i<255;i++) buf[i] = 0;
 	enum payload_status msg_stat = modem_get_payload(&lora0,buf,&recv_len);
@@ -98,7 +99,8 @@ static void my_rx(struct modem *this_modem){
     modem_listen(&lora0);
 }
 
-static void my_tx(struct modem *this_modem){
+static void my_tx(void * param){
+	struct modem * this_modem = (struct modem *)param;
 	this_modem->irq_seen = true;
 	//fprintf(fp_uart,"mode at start of my_tx: %x\r\n",lora_read_reg(&lora0,LORA_REG_OP_MODE));
 	if(this_modem->irq_data == LORA_MASK_IRQFLAGS_TXDONE){
@@ -131,7 +133,8 @@ int main(void) {
     fprintf(fp_uart,"start setup\r\n");
     callback_timer_setup();
     
-    modem_setup(&lora0,&my_rx,&my_tx,&dev_breadboard);
+    modem_setup(&lora0,&dev_breadboard);
+	modem_attach_callbacks(&lora0,&my_tx,&my_rx,&lora0);
     
 	local_address_setup();
 	fprintf(fp_uart,"Local address: %x\r\n",local_address_get());

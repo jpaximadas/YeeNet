@@ -18,6 +18,10 @@
 #define FREQ_TO_REG(in_freq) ((uint32_t)(( ((uint64_t)in_freq) << 19) / FXOSC))
 #define REG_TO_FREQ(in_reg) ((uint32_t)((FXOSC*in_reg) >> 19))
 
+void dummy_callback(struct modem *this_modem){
+	return;
+}
+
 bool modem_setup(
 	struct modem *this_modem, 
 	void (*_rx_callback)(struct modem *),
@@ -38,9 +42,9 @@ bool modem_setup(
 	
 	//fprintf(fp_uart,"set hw pointer\r\n");
 	
-	//set rx/tx done isr function pointers
-	this_modem->rx_callback = _rx_callback;
-	this_modem->tx_callback = _tx_callback;
+	//set rx/tx done isr to dummy functions
+	this_modem->rx_callback = &dummy_callback;
+	this_modem->tx_callback = &dummy_callback;
 	
 	//fprintf(fp_uart,"set function pointers\r\n");
 	
@@ -109,6 +113,15 @@ bool modem_setup(
     seed_random(this_modem);
     
     return true;
+}
+
+
+bool modem_attach_callbacks(struct modem *this_modem, void (*_rx_callback)(void *), void (*_tx_callback)(void *) , void * _callback_arg){
+	//set rx/tx done isr function pointers
+	this_modem->callback_arg = _callback_arg;
+	this_modem->rx_callback = _rx_callback;
+	this_modem->tx_callback = _tx_callback;
+	
 }
 
 //this function will put the lora into a standby mode

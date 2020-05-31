@@ -56,8 +56,9 @@ struct modem {
     volatile bool irq_seen;
     enum irq_mode cur_irq_type;
     
-    void (*rx_callback)(struct modem *);
-    void (*tx_callback)(struct modem *);
+	void * callback_arg;
+    void (*rx_callback)(void *);
+    void (*tx_callback)(void *);
     
     struct modem_hw *hw;
     struct modulation_config *modulation;
@@ -65,12 +66,10 @@ struct modem {
 };
 
 //set up the modem
-bool modem_setup(
-	struct modem *this_modem, 
-	void (*_rx_callback)(struct modem *),
-	void (*_tx_callback)(struct modem *),
-	struct modem_hw *hw
-	);
+bool modem_setup(struct modem *this_modem, struct modem_hw *hw);
+
+//atach callbacks
+bool modem_attach_callbacks(struct modem *this_modem, void (*_rx_callback)(void *), void (*_tx_callback)(void *), void *_callback_arg );
 
 //set the payload for next TX
 void modem_load_payload(struct modem *this_modem, uint8_t msg[MAX_PAYLOAD_LENGTH], uint8_t length);
