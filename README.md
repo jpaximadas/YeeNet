@@ -102,7 +102,7 @@ Development for this project currently uses a bluepill dev board. The following 
 
 # Obtaining a breakout board
 
-The adafruit breakout board can occupy too much space to access all the pins and can be expensive.. You can obtain a bare breakout board here:
+The adafruit breakout board can occupy too much space to access all the pins and can be expensive. You can obtain a bare breakout board here:
 
 <a href="https://oshpark.com/shared_projects/1Yl3TOYu"><img src="https://oshpark.com/packs/media/images/badge-84bb0776ea53b1f532c02df323a90c88.png" alt="Order from OSH Park"></img></a>
 
