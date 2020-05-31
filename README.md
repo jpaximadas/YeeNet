@@ -104,9 +104,10 @@ Development for this project currently uses a bluepill dev board. The following 
 
 The adafruit breakout board can occupy too much space to access all the pins and can be expensive.. You can obtain a bare breakout board here:
 
-![](https://644db4de3505c40a0444-327723bce298e3ff5813fb42baeefbaa.ssl.cf1.rackcdn.com/0c6bf2e8049b1d7e512044f1a13aa55a.png =150x)
-
 <a href="https://oshpark.com/shared_projects/1Yl3TOYu"><img src="https://oshpark.com/packs/media/images/badge-84bb0776ea53b1f532c02df323a90c88.png" alt="Order from OSH Park"></img></a>
+
+<img src="https://644db4de3505c40a0444-327723bce298e3ff5813fb42baeefbaa.ssl.cf1.rackcdn.com/0c6bf2e8049b1d7e512044f1a13aa55a.png" alt="Breakout board" width="200"/>
+
 
 The RFM95 radio module can be obtained from aliexpress or banggood for under five dollars a piece.
 
