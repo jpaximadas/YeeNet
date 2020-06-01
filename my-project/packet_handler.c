@@ -2,14 +2,21 @@
 #include "modem_hl.h"
 #include "address.h"
 #include "packet.h"
+
+#include "modem_ll.h"
+
 #include <sys/types.h>
 #include <stdbool.h>
 
-#define PACKET_PROCESS_OFFSET_MS 5
+#include <stdio.h>
+#include <util.h>
+#include <uart.h>
+
+#define PACKET_PROCESS_OFFSET_MS 1000
 
 void handler_failure(void * param){
 	struct packet_handler *this_handler = (struct packet_handler *) param;
-	this_handler->last_packet_status = SUCCESS;
+	this_handler->last_packet_status = FAILED;
 	this_handler->my_state = UNLOCKED;
 }
 
@@ -22,12 +29,9 @@ void handler_success(void * param){
 
 void handler_post_tx(void * param){
 	struct packet_handler *this_handler = (struct packet_handler *) param;
-	//check if rx cleanup will handle mode change
-	if(!(this_handler->wait_for_cleanup)){
-		modem_listen(this_handler->my_modem);
-	}
-	//wait for cleanup flag is cleared by rx cleanup
-	return;
+	modem_listen(this_handler->my_modem);
+	//fprintf(fp_uart,"mode reg %x\r\n",lora_read_reg(this_handler->my_modem, LORA_REG_OP_MODE));
+
 }
 
 void handler_post_rx(void * param){
@@ -60,11 +64,8 @@ void handler_post_rx(void * param){
 			{
 				struct packet_ack *cur_ack = (struct packet_ack *) (this_handler->rx_pkt);
 				if(this_handler->my_state == LOCKED){ //is TX ongoing
-					
 					if(cur_ack->dest==0x00 || cur_ack->dest==this_handler->my_addr){ //is the packet addressed to this node
-				
 						if(this_handler->tx_pkt->type == DATA_ACKED){ //is this node waiting for an ack
-
 							if(this_handler->tx_pkt->dest == cur_ack->src){ //is this ack from the node being TX'ed to
 					
 								remove_timed_callback(this_handler->my_timed_callback);
@@ -181,6 +182,8 @@ void handler_setup
 	this_handler->wait_for_cleanup = false;
 	
 	modem_attach_callbacks(this_handler->my_modem,&handler_post_rx,&handler_post_tx,this_handler);
+
+	modem_listen(this_handler->my_modem);
 }
 
 uint32_t backoff_rng(uint8_t bits){
@@ -194,6 +197,8 @@ bool handler_request_transmit(struct packet_handler *this_handler, struct packet
 	if(!modem_is_clear(this_handler->my_modem)){return false;}
 	
 	//packet_handler is clear for tx
+
+	this_handler->my_state = LOCKED;
 
 	this_handler->tx_pkt= pkt; //assign tx_pkt pointer to input
 
@@ -218,6 +223,7 @@ bool handler_request_transmit(struct packet_handler *this_handler, struct packet
 	switch(this_handler->my_send_mode){
 		case LAZY:
 			time_ms = this_handler->pkt_airtime_ms + this_handler->ack_airtime_ms + PACKET_PROCESS_OFFSET_MS;
+			fprintf(fp_uart,"timout set to %lu \r\n",time_ms);
 			switch(this_handler->tx_pkt->type){
 				//TODO handle add_timed_callback retval
 				case DATA_ACKED:
@@ -238,6 +244,7 @@ bool handler_request_transmit(struct packet_handler *this_handler, struct packet
 
 		break;
 	}
+
 
 	modem_transmit(this_handler->my_modem);
 	return true;

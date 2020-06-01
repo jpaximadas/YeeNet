@@ -85,6 +85,9 @@ bool modem_setup(
     // Set RegPaDac to 0x87, increases power?
     lora_write_reg_and_check(this_modem,REG_PA_DAC, 0x84,true);
 
+	//set sync word
+	//lora_write_reg(this_modem,0x39,0x00);
+
     // Set the FIFO RX/TX pointers to 0
     lora_write_reg(this_modem,LORA_REG_FIFO_TX_BASE_ADDR, 0x00);
     lora_write_reg(this_modem,LORA_REG_FIFO_RX_BASE_ADDR, 0x00);
@@ -98,9 +101,9 @@ bool modem_setup(
     lora_write_reg(this_modem,LORA_REG_FR_MID, (FREQ_TO_REG(915000000) >> 8) & 0b11111111);
     lora_write_reg(this_modem,LORA_REG_FR_LSB, FREQ_TO_REG(915000000) & 0b11111111);
     */
-    lora_write_reg(this_modem,LORA_REG_FR_MSB, (FREQ_TO_REG(915000000) >> 16) & 0b11111111);
-    lora_write_reg(this_modem,LORA_REG_FR_MID, (FREQ_TO_REG(915000000) >> 8) & 0b11111111);
-    lora_write_reg(this_modem,LORA_REG_FR_LSB, FREQ_TO_REG(915000000) & 0b11111111);
+    lora_write_reg(this_modem,LORA_REG_FR_MSB, (FREQ_TO_REG(914000000) >> 16) & 0b11111111);
+    lora_write_reg(this_modem,LORA_REG_FR_MID, (FREQ_TO_REG(914000000) >> 8) & 0b11111111);
+    lora_write_reg(this_modem,LORA_REG_FR_LSB, FREQ_TO_REG(914000000) & 0b11111111);
     //fprintf(fp_uart,"starting modulation config\r\n");
     lora_config_modulation(this_modem,&default_modulation);
     

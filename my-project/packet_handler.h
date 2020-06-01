@@ -6,6 +6,11 @@
 #include "callback_timer.h"
 #include "packet.h"
 
+#include "uart.h"
+
+#include <stdio.h>
+#include <util.h>
+#include <uart.h>
 
 enum send_mode{
 	LAZY=0,
@@ -71,6 +76,7 @@ void handler_backoff_retransmit(void * param);
 
 static inline void handler_rx_cleanup(struct packet_handler *this_handler, bool tx_on_cleanup){
 	if(tx_on_cleanup){
+		fprintf(fp_uart,"[DEBUG] transmitting ack\r\n");
 		modem_transmit(this_handler->my_modem);
 	}
 	if(this_handler->tx_snooze){
