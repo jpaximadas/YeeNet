@@ -41,7 +41,6 @@ void exti0_isr(void) {
     
     switch(exti0_modem->cur_irq_type){
 		case RX_DONE:
-            fprintf(fp_uart,"[DEBUG] RX in progress!\r\n");
 			(*(exti0_modem->rx_callback))(exti0_modem->callback_arg);
 			break;
 		case TX_DONE:
@@ -157,13 +156,11 @@ bool lora_change_mode(struct modem *this_modem, enum lora_mode change_to){
 			break;
 		case RX:
 			lora_write_reg(this_modem, REG_DIO_MAPPING_1, 0x00 /* RXDONE */);
-            fprintf(fp_uart,"cur_irq_type set to RX_DONE\r\n");
 			this_modem->cur_irq_type = RX_DONE;
 			mode = MODE_RXCON;
 			break;
 		case TX:
 			lora_write_reg(this_modem, REG_DIO_MAPPING_1, 0x40 /* TXDONE */);
-            fprintf(fp_uart,"cur_irq_type set to TX_DONE\r\n");
 			this_modem->cur_irq_type = TX_DONE;
 			mode = MODE_TX;
 			break;

@@ -135,7 +135,7 @@ int main(void) {
 			}
 
 			while(lora0_handler.my_state == LOCKED){
-				fprintf(fp_uart,"waiting for ack... mode: %x\r\n",lora_read_reg(&lora0,0x01));
+				fprintf(fp_uart,"waiting for ack...\r\n");
 				delay_nops(1000000);
 			}
 
@@ -150,8 +150,11 @@ int main(void) {
 		if(pkt_avail){
 			fprintf(fp_uart,"got packet\r\n");
 			fprintf(fp_uart,"source: %x destination: %x \r\n", incoming_packet.src, incoming_packet.dest);
-			fprintf(fp_uart,"contents: %x \r\n", (char ) incoming_packet.data);
-
+			fprintf(fp_uart,"length: %x\r\n",incoming_packet.len); //length can make the loop exceed the size of the struct, fix when running for real
+			for(int i=0;i<incoming_packet.len;i++){
+				fprintf(fp_uart,"%c", (char ) incoming_packet.data[i]);
+			}
+			fprintf(fp_uart,"\r\n");
 			fprintf(fp_uart,"RSSI: %ld dB\r\n",get_last_payload_rssi(&lora0));
 			double snr = get_last_payload_snr(&lora0);
 			int32_t snr_floored = (int32_t)snr;

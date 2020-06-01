@@ -78,10 +78,11 @@ static inline void handler_rx_cleanup(struct packet_handler *this_handler, bool 
 	if(tx_on_cleanup){
 		fprintf(fp_uart,"[DEBUG] transmitting ack\r\n");
 		modem_transmit(this_handler->my_modem);
+	}else{
+		if(this_handler->tx_snooze){
+			handler_backoff_retransmit(this_handler);
+			this_handler->tx_snooze = false;
+		} 
+		modem_listen(this_handler->my_modem);
 	}
-	if(this_handler->tx_snooze){
-		handler_backoff_retransmit(this_handler);
-		this_handler->tx_snooze = false;
-	} 
-	modem_listen(this_handler->my_modem);
 }
