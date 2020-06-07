@@ -63,6 +63,9 @@ struct modem {
     
     struct modem_hw *hw;
     struct modulation_config *modulation;
+
+	uint32_t extra_time_ms; //expresses time taken by post/preprocessing steps on chip not accounted for by airtime calcs
+
         
 };
 

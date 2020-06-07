@@ -110,7 +110,7 @@ int main(void) {
 	outgoing_packet.type = DATA_ACKED;
 
     callback_timer_setup();
-	modem_setup(&lora0,&dev_breadboard);
+	modem_setup(&lora0,&dev_breadboard); //this needs to cocur first
 
 	handler_setup(&lora0_handler, &lora0, &incoming_packet, &capture_packet, &lora0_handler, LAZY, 4);
 
@@ -135,9 +135,12 @@ int main(void) {
 			}
 
 			while(lora0_handler.my_state == LOCKED){
-				fprintf(fp_uart,"waiting for ack...\r\n");
-				delay_nops(1000000);
+				start_timer(1);
+				//fprintf(fp_uart,"waiting for ack...\r\n");
+				//delay_nops(1000000);
 			}
+
+			fprintf(fp_uart,"Locked->Unlocked: %lu\r\n",stop_timer(1));
 
 			if(lora0_handler.last_packet_status==SUCCESS){
 				fprintf(fp_uart,"received ack; exchange successful!\r\n");
@@ -148,9 +151,10 @@ int main(void) {
 		}
 
 		if(pkt_avail){
-			fprintf(fp_uart,"got packet\r\n");
+			fprintf(fp_uart,"got packet | ");
 			fprintf(fp_uart,"source: %x destination: %x \r\n", incoming_packet.src, incoming_packet.dest);
 			fprintf(fp_uart,"length: %x\r\n",incoming_packet.len); //length can make the loop exceed the size of the struct, fix when running for real
+			fprintf(fp_uart,"contents: ");
 			for(int i=0;i<incoming_packet.len;i++){
 				fprintf(fp_uart,"%c", (char ) incoming_packet.data[i]);
 			}

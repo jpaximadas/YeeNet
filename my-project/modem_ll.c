@@ -4,6 +4,7 @@
 #include "util.h" //debug
 #include "sx127x.h"
 #include "modem_ll_config.h"
+#include "callback_timer.h" //debug
 
 #include <sys/types.h>
 #include <stdbool.h>
@@ -27,7 +28,7 @@ void exti0_isr(void) {
 	
     //TODO figure out how to demote systick priority
     exti_reset_request(EXTI0); //must always be first
-    systick_counter_disable();//stop systick from preempting this irq_seen
+    //systick_counter_disable();//stop systick from preempting this irq_seen
 
      
 
@@ -41,9 +42,11 @@ void exti0_isr(void) {
     
     switch(exti0_modem->cur_irq_type){
 		case RX_DONE:
+            //start_timer(0);
 			(*(exti0_modem->rx_callback))(exti0_modem->callback_arg);
 			break;
 		case TX_DONE:
+            //fprintf(fp_uart,"RX to TX time: %li\r\n",stop_timer(0));
 			(*(exti0_modem->tx_callback))(exti0_modem->callback_arg);
 			break;
 		case INVALID:
@@ -53,7 +56,7 @@ void exti0_isr(void) {
 			break;
 	}
    
-   systick_counter_enable();
+   //systick_counter_enable();
 }
 
 void spi_setup(struct modem *this_modem) {
@@ -113,7 +116,7 @@ void lora_write_fifo(struct modem *this_modem, uint8_t* buf, uint8_t len, uint8_
     spi_xfer(this_modem->hw->spi_interface,offset);
     ss_set(this_modem);
     
-    delay_nops(100000);
+    delay_nops(1000);
     //assume compiler is not good enough to emit an sbi instruction for the digital_writes
     // Write data to FIFO.
     ss_clear(this_modem);
@@ -133,7 +136,7 @@ void lora_read_fifo(struct modem *this_modem, uint8_t *buf, uint8_t len, uint8_t
     spi_xfer(this_modem->hw->spi_interface,offset);
     ss_set(this_modem);
 
-	delay_nops(100000);
+	delay_nops(1000);
     // Read data from FIFO
     ss_clear(this_modem);
     spi_xfer(this_modem->hw->spi_interface,LORA_REG_FIFO);
@@ -143,7 +146,7 @@ void lora_read_fifo(struct modem *this_modem, uint8_t *buf, uint8_t len, uint8_t
     ss_set(this_modem);
 }
 
-bool lora_change_mode(struct modem *this_modem, enum lora_mode change_to){
+bool lora_change_mode(struct modem *this_modem, enum lora_mode change_to,bool check_mode){
 	uint8_t mode;
 	switch(change_to){
 		case SLEEP:
@@ -168,7 +171,13 @@ bool lora_change_mode(struct modem *this_modem, enum lora_mode change_to){
 			mode = SLEEP;
 			break;
 	}
-	return lora_write_reg_and_check(this_modem, LORA_REG_OP_MODE, MODE_LORA | mode,true);
+    if(check_mode){
+        return lora_write_reg_and_check(this_modem, LORA_REG_OP_MODE, MODE_LORA | mode,true);
+    }else{
+        lora_write_reg(this_modem, LORA_REG_OP_MODE, MODE_LORA | mode);
+        return true;
+    }
+	
 }
 
 uint8_t lora_read_reg(struct modem *this_modem, uint8_t reg) {

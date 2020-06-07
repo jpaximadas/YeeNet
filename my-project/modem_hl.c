@@ -4,6 +4,7 @@
 #include "modem_ll_config.h"
 #include "uart.h"
 #include "util.h"
+#include "callback_timer.h"//debug
 
 #include <sys/types.h>
 #include <stdbool.h>
@@ -69,7 +70,7 @@ bool modem_setup(
 	
 	//fprintf(fp_uart,"lora board reset");
 	//fprintf(fp_uart,"attempting to put lora into sleep mode\r\n");
-	if(!lora_change_mode(this_modem,SLEEP)){
+	if(!lora_change_mode(this_modem,SLEEP,true)){
 		#ifdef DEBUG
         fputs("Failed to enter LORA+SLEEP mode!\r\n", fp_uart);
 		#endif
@@ -101,11 +102,34 @@ bool modem_setup(
     lora_write_reg(this_modem,LORA_REG_FR_MID, (FREQ_TO_REG(915000000) >> 8) & 0b11111111);
     lora_write_reg(this_modem,LORA_REG_FR_LSB, FREQ_TO_REG(915000000) & 0b11111111);
     */
-    lora_write_reg(this_modem,LORA_REG_FR_MSB, (FREQ_TO_REG(914000000) >> 16) & 0b11111111);
-    lora_write_reg(this_modem,LORA_REG_FR_MID, (FREQ_TO_REG(914000000) >> 8) & 0b11111111);
-    lora_write_reg(this_modem,LORA_REG_FR_LSB, FREQ_TO_REG(914000000) & 0b11111111);
+    lora_write_reg(this_modem,LORA_REG_FR_MSB, (FREQ_TO_REG(920000000) >> 16) & 0b11111111);
+    lora_write_reg(this_modem,LORA_REG_FR_MID, (FREQ_TO_REG(920000000) >> 8) & 0b11111111);
+    lora_write_reg(this_modem,LORA_REG_FR_LSB, FREQ_TO_REG(920000000) & 0b11111111);
     //fprintf(fp_uart,"starting modulation config\r\n");
     lora_config_modulation(this_modem,&default_modulation);
+	switch(this_modem->modulation->spreading_factor){
+		case SF6:
+			this_modem->extra_time_ms = 1;
+			break;
+		case SF7:
+			this_modem->extra_time_ms = 1;
+			break;
+		case SF8:
+			this_modem->extra_time_ms = 1;
+			break;
+		case SF9:
+			this_modem->extra_time_ms = 1;
+			break;
+		case SF10:
+			this_modem->extra_time_ms = 3;
+			break;
+		case SF11:
+			this_modem->extra_time_ms = 6;
+			break;
+		case SF12:
+			this_modem->extra_time_ms = 15;
+			break;
+	}
     
 
 #ifdef DEBUG
@@ -135,7 +159,7 @@ void modem_load_payload(struct modem *this_modem, uint8_t msg[MAX_PAYLOAD_LENGTH
 	}
 	*/
 
-	lora_change_mode(this_modem,STANDBY);
+	lora_change_mode(this_modem,STANDBY,false);
 	
 	if(this_modem->modulation->header_enabled){ //explicit header mode
 		lora_write_reg(this_modem,LORA_REG_PAYLOAD_LENGTH, length); //inform lora of payload length
@@ -157,7 +181,7 @@ void modem_load_payload(struct modem *this_modem, uint8_t msg[MAX_PAYLOAD_LENGTH
 
 void modem_transmit(struct modem *this_modem) {
     this_modem->irq_seen = true;
-    lora_change_mode(this_modem,TX);
+    lora_change_mode(this_modem,TX,false);
 	
     //timer_reset();
     //return status;
@@ -170,7 +194,7 @@ void modem_load_and_transmit(struct modem *this_modem, uint8_t msg[MAX_PAYLOAD_L
 
 bool modem_listen(struct modem *this_modem) {
 	this_modem->irq_seen = true; //reset irq flag
-	return lora_change_mode(this_modem,RX);
+	return lora_change_mode(this_modem,RX,false);
 }
 
 //this function will put the lora into a standby mode
@@ -180,7 +204,7 @@ enum payload_status modem_get_payload(struct modem *this_modem, uint8_t buf_out[
     if (this_modem->irq_seen || (this_modem->cur_irq_type != RX_DONE)){
         return PAYLOAD_EMPTY;
 	}
-	lora_change_mode(this_modem,STANDBY); //put the lora into standby mode for reg read
+	lora_change_mode(this_modem,STANDBY,false); //put the lora into standby mode for reg read
 	enum payload_status retval = PAYLOAD_GOOD;
 	
     if (!(data & LORA_MASK_IRQFLAGS_RXDONE)){
@@ -215,6 +239,8 @@ double ceil(double num) {
 
 uint32_t modem_get_airtime_usec(struct modem *this_modem,uint8_t payload_length){
 	
+	//fprintf(fp_uart,"-----------------------\r\n");
+	//fprintf(fp_uart,"airtime computation in progress...\r\n");
 	int32_t payload_bytes = (int32_t) payload_length;
 	int32_t implicit_header = 0; //implicit header = 0 when header is enabled
 	if(!(this_modem->modulation->header_enabled)){
@@ -232,14 +258,19 @@ uint32_t modem_get_airtime_usec(struct modem *this_modem,uint8_t payload_length)
 	double symbol_time = ((double) SF_pw / (double) BW);
 	int32_t symbol_time_usec = (int32_t) (symbol_time*1E6); //symbol length in us
 	
-	//fprintf(fp_uart,"symbol time usec %lu",symbol_time_usec);
+	//fprintf(fp_uart,"symbol time usec %lu\r\n",symbol_time_usec);
 	
 	int32_t low_data_rate_optimize;
-	//test ? false : true
-	(symbol_time_usec>16000) ? (low_data_rate_optimize = 1) : (low_data_rate_optimize = 0);
+	//test ? true : false
+	if(symbol_time_usec>16000){
+		low_data_rate_optimize = 1;
+		//fprintf(fp_uart,"LOW DATA RATE OPTIMIZE ENABLED\r\n");
+	} else {
+		low_data_rate_optimize = 0;
+	}
 	
 	int32_t crc;
-	//test ? false : true
+	//test ? true : false
 	(this_modem->modulation->crc_enabled) ? (crc = 1) : (crc = 0);
 	//fprintf
 	
@@ -275,7 +306,7 @@ uint32_t modem_get_airtime_usec(struct modem *this_modem,uint8_t payload_length)
 	double preamble_time = ((double)n_preamble + 4.25F)*symbol_time;
 	
 	double packet_time = payload_time + preamble_time;
-	
+	//fprintf(fp_uart,"-----------------------\r\n");
 	return ( (uint32_t) (packet_time*1E6) );
 }
 

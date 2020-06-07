@@ -74,15 +74,20 @@ bool handler_request_transmit(struct packet_handler *this_handler, struct packet
 
 void handler_backoff_retransmit(void * param);
 
+extern uint32_t execution_time;
+
 static inline void handler_rx_cleanup(struct packet_handler *this_handler, bool tx_on_cleanup){
+
 	if(tx_on_cleanup){
-		fprintf(fp_uart,"[DEBUG] transmitting ack\r\n");
+
 		modem_transmit(this_handler->my_modem);
+		//fprintf(fp_uart,"[DEBUG] transmitted ack\r\n");
 	}else{
-		if(this_handler->tx_snooze){
+		if(this_handler->tx_snooze){ //this part probably doesn't work
 			handler_backoff_retransmit(this_handler);
 			this_handler->tx_snooze = false;
 		} 
 		modem_listen(this_handler->my_modem);
 	}
+	
 }

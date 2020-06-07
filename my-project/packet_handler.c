@@ -2,6 +2,7 @@
 #include "modem_hl.h"
 #include "address.h"
 #include "packet.h"
+#include "callback_timer.h"
 
 #include "modem_ll.h"
 
@@ -12,7 +13,8 @@
 #include <util.h>
 #include <uart.h>
 
-#define PACKET_PROCESS_OFFSET_MS 1000
+#define PACKET_PROCESS_OFFSET_MS 1
+
 
 void handler_failure(void * param){
 	struct packet_handler *this_handler = (struct packet_handler *) param;
@@ -34,7 +36,9 @@ void handler_post_tx(void * param){
 
 }
 
+
 void handler_post_rx(void * param){
+
 	uint8_t recv_len;
 	struct packet_handler *this_handler = (struct packet_handler *) param;
 	enum payload_status stat = modem_get_payload(this_handler->my_modem,(uint8_t *) (this_handler->rx_pkt),&recv_len);
@@ -104,12 +108,13 @@ void handler_post_rx(void * param){
 		case DATA_ACKED:
 		{
 				if(this_handler->rx_pkt->dest==0x00 || this_handler->rx_pkt->dest == this_handler->my_addr){
-
+					
 					this_handler->my_ack.dest = this_handler->rx_pkt->src;
 					tx_on_cleanup = true;
 					modem_load_payload(this_handler->my_modem,(uint8_t *) &(this_handler->my_ack),sizeof(struct packet_ack));
 					(*(this_handler->pkt_rdy_callback))(this_handler->callback_arg); //execute packet ready callback
 				}
+				
 			break;
 		}
 
@@ -150,12 +155,16 @@ void handler_setup
 	(this_handler->my_ack).src = this_handler->my_addr;
 	(this_handler->my_ack).dest = 0; //this is populated before sending
 	
-	this_handler->ack_airtime_ms = modem_get_airtime_usec(this_handler->my_modem,sizeof(struct packet_ack))/1000;
+		this_handler->my_modem = _my_modem;
+
+	this_handler->ack_airtime_ms = modem_get_airtime_usec(this_handler->my_modem,sizeof(struct packet_ack))/1000 + 1;
+	fprintf(fp_uart,"estimated ack airtime: %li\r\n",this_handler->ack_airtime_ms);
 	
 	(this_handler->my_nack).type = NACK;
 	(this_handler->my_nack).src = this_handler->my_addr;
 	
-	this_handler->nack_airtime_ms = modem_get_airtime_usec(this_handler->my_modem,sizeof(struct packet_nack))/1000;
+	this_handler->nack_airtime_ms = modem_get_airtime_usec(this_handler->my_modem,sizeof(struct packet_nack))/1000 + 1;
+	fprintf(fp_uart,"estimated nack airtime: %li\r\n",this_handler->nack_airtime_ms);
 	
 	this_handler->pkt_rdy_callback = _pkt_rdy_callback;
 	this_handler->callback_arg= _callback_arg;
@@ -163,7 +172,7 @@ void handler_setup
 	//workspace for incoming packets. to be made safe to write by pkt_rdy_callback
 	this_handler->rx_pkt = _rx_pkt;
 	
-	this_handler->my_modem = _my_modem;
+
 
 	this_handler->my_send_mode = _my_send_mode;
 	
@@ -206,7 +215,8 @@ bool handler_request_transmit(struct packet_handler *this_handler, struct packet
 	this_handler->pkt_length = this_handler->tx_pkt->len+PACKET_DATA_OVERHEAD;
 
 	//compute and store packet airtime
-	this_handler->pkt_airtime_ms = modem_get_airtime_usec(this_handler->my_modem,this_handler->pkt_length)/1000;
+	this_handler->pkt_airtime_ms = modem_get_airtime_usec(this_handler->my_modem,this_handler->pkt_length)/1000 + 1;
+	fprintf(fp_uart,"estimated packet airtime: %li\r\n",this_handler->pkt_airtime_ms);
 	
 	//load the packet
 	//this also deafens the modem
@@ -222,11 +232,12 @@ bool handler_request_transmit(struct packet_handler *this_handler, struct packet
 	uint32_t time_ms = 0;
 	switch(this_handler->my_send_mode){
 		case LAZY:
-			time_ms = this_handler->pkt_airtime_ms + this_handler->ack_airtime_ms + PACKET_PROCESS_OFFSET_MS;
+			time_ms = this_handler->pkt_airtime_ms + this_handler->ack_airtime_ms + this_handler->my_modem->extra_time_ms +PACKET_PROCESS_OFFSET_MS;
 			fprintf(fp_uart,"timout set to %lu \r\n",time_ms);
 			switch(this_handler->tx_pkt->type){
 				//TODO handle add_timed_callback retval
 				case DATA_ACKED:
+
 					add_timed_callback(time_ms,&handler_failure,this_handler,&(this_handler->my_timed_callback));
 				break;
 				case DATA_UNACKED:
@@ -245,8 +256,9 @@ bool handler_request_transmit(struct packet_handler *this_handler, struct packet
 		break;
 	}
 
-
+	
 	modem_transmit(this_handler->my_modem);
+	
 	return true;
 }
 
