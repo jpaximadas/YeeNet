@@ -36,13 +36,18 @@ void handler_post_tx(void * param){
 
 }
 
+uint8_t handicap_counter = 0;
 
 void handler_post_rx(void * param){
 
 	uint8_t recv_len;
+
 	struct packet_handler *this_handler = (struct packet_handler *) param;
 	enum payload_status stat = modem_get_payload(this_handler->my_modem,(uint8_t *) (this_handler->rx_pkt),&recv_len);
+
 	this_handler->my_modem->irq_seen = true;
+
+
 	switch(stat){
 		case PAYLOAD_EMPTY:
 			handler_rx_cleanup(this_handler, false);
@@ -107,8 +112,17 @@ void handler_post_rx(void * param){
 
 		case DATA_ACKED:
 		{
+				
 				if(this_handler->rx_pkt->dest==0x00 || this_handler->rx_pkt->dest == this_handler->my_addr){
 					
+					if(handicap_counter<2){
+						fprintf(fp_uart,"HANDICAP\r\n");
+						handicap_counter++;
+						handler_rx_cleanup(this_handler,false);
+						return;
+					}
+					handicap_counter = 0;
+
 					this_handler->my_ack.dest = this_handler->rx_pkt->src;
 					tx_on_cleanup = true;
 					modem_load_payload(this_handler->my_modem,(uint8_t *) &(this_handler->my_ack),sizeof(struct packet_ack));
@@ -250,7 +264,7 @@ bool handler_request_transmit(struct packet_handler *this_handler, struct packet
 		break;
 		case PERSISTENT:
 			this_handler->backoffs = 1;
-			time_ms = backoff_rng(this_handler->backoffs) * (this_handler->pkt_airtime_ms) + this_handler->ack_airtime_ms + PACKET_PROCESS_OFFSET_MS;
+			time_ms = (1 + backoff_rng(this_handler->backoffs)) * (this_handler->pkt_airtime_ms + this_handler->ack_airtime_ms + this_handler->my_modem->extra_time_ms + PACKET_PROCESS_OFFSET_MS);
 			add_timed_callback(time_ms,&handler_backoff_retransmit,this_handler,&(this_handler->my_timed_callback));
 
 		break;
@@ -290,7 +304,8 @@ void handler_backoff_retransmit(void * param){
 	modem_load_payload(this_handler->my_modem,(uint8_t *) this_handler->tx_pkt,this_handler->pkt_length);
 
 	this_handler->backoffs++;
-	uint32_t time_ms = backoff_rng(this_handler->backoffs) * (this_handler->pkt_airtime_ms) + this_handler->ack_airtime_ms + PACKET_PROCESS_OFFSET_MS;
+	uint32_t time_ms = ( 1 + backoff_rng(this_handler->backoffs)) * (this_handler->pkt_airtime_ms + this_handler->ack_airtime_ms + this_handler->my_modem->extra_time_ms + PACKET_PROCESS_OFFSET_MS);
+	fprintf(fp_uart,"waiting for: %lu\r\n",time_ms);
 
 	add_timed_callback(time_ms,&handler_backoff_retransmit,this_handler,&(this_handler->my_timed_callback));
 
@@ -298,4 +313,3 @@ void handler_backoff_retransmit(void * param){
 
 
 }
-

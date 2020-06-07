@@ -112,7 +112,7 @@ int main(void) {
     callback_timer_setup();
 	modem_setup(&lora0,&dev_breadboard); //this needs to cocur first
 
-	handler_setup(&lora0_handler, &lora0, &incoming_packet, &capture_packet, &lora0_handler, LAZY, 4);
+	handler_setup(&lora0_handler, &lora0, &incoming_packet, &capture_packet, &lora0_handler, PERSISTENT, 4);
 
 
 	

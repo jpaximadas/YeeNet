@@ -43,6 +43,7 @@ void exti0_isr(void) {
     switch(exti0_modem->cur_irq_type){
 		case RX_DONE:
             //start_timer(0);
+     
 			(*(exti0_modem->rx_callback))(exti0_modem->callback_arg);
 			break;
 		case TX_DONE:
