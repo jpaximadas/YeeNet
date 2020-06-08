@@ -18,6 +18,7 @@
 
 #include <stdbool.h>
 #include <sys/types.h>
+#include <stdlib.h>
 
 struct modem_hw{
 	
@@ -56,21 +57,23 @@ struct modem {
     volatile bool irq_seen;
     enum irq_mode cur_irq_type;
     
-    void (*rx_callback)(struct modem *);
-    void (*tx_callback)(struct modem *);
+	void * callback_arg;
+    void (*rx_callback)(void *);
+    void (*tx_callback)(void *);
     
     struct modem_hw *hw;
     struct modulation_config *modulation;
+
+	uint32_t extra_time_ms; //expresses time taken by post/preprocessing steps on chip not accounted for by airtime calcs
+
         
 };
 
 //set up the modem
-bool modem_setup(
-	struct modem *this_modem, 
-	void (*_rx_callback)(struct modem *),
-	void (*_tx_callback)(struct modem *),
-	struct modem_hw *hw
-	);
+bool modem_setup(struct modem *this_modem, struct modem_hw *hw);
+
+//atach callbacks
+void modem_attach_callbacks(struct modem *this_modem, void (*_rx_callback)(void *), void (*_tx_callback)(void *), void *_callback_arg );
 
 //set the payload for next TX
 void modem_load_payload(struct modem *this_modem, uint8_t msg[MAX_PAYLOAD_LENGTH], uint8_t length);
@@ -94,10 +97,12 @@ enum payload_status {
 enum payload_status modem_get_payload(struct modem *this_modem, uint8_t buf_out[MAX_PAYLOAD_LENGTH], uint8_t *length);
 
 //pull a 32 bit integer from the pseudom-random number source
-uint32_t rand_32(void);
+inline static uint32_t rand_32(void) {
+    return rand();
+}
 
 //if the header is disabled, length is not accounted for
-uint32_t get_airtime(struct modem *this_modem, uint8_t payload_length);
+uint32_t modem_get_airtime_usec(struct modem *this_modem, uint8_t payload_length);
 
 bool modem_is_clear(struct modem *this_modem);
 

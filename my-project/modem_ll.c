@@ -4,6 +4,7 @@
 #include "util.h" //debug
 #include "sx127x.h"
 #include "modem_ll_config.h"
+#include "callback_timer.h" //debug
 
 #include <sys/types.h>
 #include <stdbool.h>
@@ -14,6 +15,7 @@
 #include <libopencm3/stm32/spi.h>
 #include <libopencm3/cm3/nvic.h>
 #include <libopencm3/stm32/exti.h>
+#include <libopencm3/cm3/systick.h>
 #include <libopencm3/stm32/usart.h> //debug
 
 
@@ -24,9 +26,13 @@ struct modem * volatile exti0_modem  = NULL;
 
 void exti0_isr(void) {
 	
+    //TODO figure out how to demote systick priority
     exti_reset_request(EXTI0); //must always be first
+    //systick_counter_disable();//stop systick from preempting this irq_seen
 
-	//fprintf(fp_uart,"starting ISR\r\n");
+     
+
+	//fprintf(fp_uart,"got interrupt\r\n");
     exti0_modem->irq_data = lora_read_reg(exti0_modem, LORA_REG_IRQFLAGS);
 
     lora_write_reg(exti0_modem, LORA_REG_IRQFLAGS, 0xFF);
@@ -36,10 +42,13 @@ void exti0_isr(void) {
     
     switch(exti0_modem->cur_irq_type){
 		case RX_DONE:
-			(*(exti0_modem->rx_callback))(exti0_modem);
+            //start_timer(0);
+     
+			(*(exti0_modem->rx_callback))(exti0_modem->callback_arg);
 			break;
 		case TX_DONE:
-			(*(exti0_modem->tx_callback))(exti0_modem);
+            //fprintf(fp_uart,"RX to TX time: %li\r\n",stop_timer(0));
+			(*(exti0_modem->tx_callback))(exti0_modem->callback_arg);
 			break;
 		case INVALID:
 			//#ifdef DEBUG
@@ -47,7 +56,8 @@ void exti0_isr(void) {
 			//#endif
 			break;
 	}
-    
+   
+   //systick_counter_enable();
 }
 
 void spi_setup(struct modem *this_modem) {
@@ -90,6 +100,7 @@ void irq_setup(struct modem *this_modem){
 	//assume EXTI0
 	
 	nvic_enable_irq(NVIC_EXTI0_IRQ); //interrupt on PA0
+    nvic_set_priority(NVIC_EXTI0_IRQ,0);
 	
 	gpio_set_mode(this_modem->hw->irq_port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, this_modem->hw->irq_pin);
 	exti_select_source(EXTI0,this_modem->hw->irq_port);
@@ -106,7 +117,7 @@ void lora_write_fifo(struct modem *this_modem, uint8_t* buf, uint8_t len, uint8_
     spi_xfer(this_modem->hw->spi_interface,offset);
     ss_set(this_modem);
     
-    delay_nops(100000);
+    delay_nops(1000);
     //assume compiler is not good enough to emit an sbi instruction for the digital_writes
     // Write data to FIFO.
     ss_clear(this_modem);
@@ -126,7 +137,7 @@ void lora_read_fifo(struct modem *this_modem, uint8_t *buf, uint8_t len, uint8_t
     spi_xfer(this_modem->hw->spi_interface,offset);
     ss_set(this_modem);
 
-	delay_nops(100000);
+	delay_nops(1000);
     // Read data from FIFO
     ss_clear(this_modem);
     spi_xfer(this_modem->hw->spi_interface,LORA_REG_FIFO);
@@ -136,7 +147,7 @@ void lora_read_fifo(struct modem *this_modem, uint8_t *buf, uint8_t len, uint8_t
     ss_set(this_modem);
 }
 
-bool lora_change_mode(struct modem *this_modem, enum lora_mode change_to){
+bool lora_change_mode(struct modem *this_modem, enum lora_mode change_to,bool check_mode){
 	uint8_t mode;
 	switch(change_to){
 		case SLEEP:
@@ -161,7 +172,13 @@ bool lora_change_mode(struct modem *this_modem, enum lora_mode change_to){
 			mode = SLEEP;
 			break;
 	}
-	return lora_write_reg_and_check(this_modem, LORA_REG_OP_MODE, MODE_LORA | mode,true);
+    if(check_mode){
+        return lora_write_reg_and_check(this_modem, LORA_REG_OP_MODE, MODE_LORA | mode,true);
+    }else{
+        lora_write_reg(this_modem, LORA_REG_OP_MODE, MODE_LORA | mode);
+        return true;
+    }
+	
 }
 
 uint8_t lora_read_reg(struct modem *this_modem, uint8_t reg) {
