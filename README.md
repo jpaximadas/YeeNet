@@ -95,10 +95,12 @@ Development for this project currently uses a bluepill dev board. The following 
 3. Leave 3.3 volts on the ST-Link programmer disconnected.
 
 # TODO
-1. Write and test packet handler (proceeding on packet_handler branch)
-2. Improve backoff_rng in packet_handler so it doesn't exhaust the entropy pool quickly
-2. Improve organization of hardware setup
-3. Write human readable interface for manipulating all layers
+1. Test un-acked packets
+2. Write packet router
+3. Implement USB and phase out UART
+4. Write up documentation
+5. Improve backoff_rng in packet_handler so it doesn't exhaust the entropy pool quickly
+6. Improve organization of hardware setup
 
 # Obtaining a breakout board
 
