@@ -1,0 +1,183 @@
+\begin{quote}
+\+:warning\+: {\bfseries This software defaults to transmit on the 915\+M\+Hz I\+SM band legal in the United States. Transmitting on this band may not be legal in your country.} \end{quote}
+
+
+\section*{How to compile}
+
+
+\begin{DoxyCode}
+$ git clone --recurse-submodules https://github.com/jpaximadas/YeeNet.git
+$ cd YeeNet
+$ make -C libopencm3
+$ make -C my-project
+\end{DoxyCode}
+
+
+If you have an older git, or got ahead of yourself and skipped the {\ttfamily -\/-\/recurse-\/submodules} you can fix things by running {\ttfamily git submodule update -\/-\/init} (This is only needed once)
+
+Subsequent changes to the source files only require {\ttfamily make -\/C my-\/project}
+
+\section*{How to upload}
+
+This repository uses the stlink open source S\+T\+M32 M\+CU programming toolset\+: \href{https://github.com/stlink-org/stlink}{\tt https\+://github.\+com/stlink-\/org/stlink}
+
+
+\begin{DoxyEnumerate}
+\item Ensure B\+O\+O\+T0 is not set such that the board will erase the memory after being programmed
+\item Ensure S\+W\+D\+IO, S\+W\+C\+LK, and G\+ND are connected to the M\+CU (only connect 3.\+3V if you intend to power the board from the programmer)
+\item Program the chip\+: 
+\begin{DoxyCode}
+$ ./st-flash --reset write awesomesauce.bin 0x8000000
+\end{DoxyCode}
+
+\end{DoxyEnumerate}
+
+\section*{How to debug}
+
+Once the binary has been uploaded run the following in the the my-\/project directory\+:
+\begin{DoxyEnumerate}
+\item Start the gdb server 
+\begin{DoxyCode}
+$ ./st-util
+\end{DoxyCode}
+
+\item In another terminal--still in my-\/project--start G\+DB and configure 
+\begin{DoxyCode}
+$ arm-none-eabi-gdb awesomesauce.elf
+$ target remote localhost:4242
+$ load awesomesauce.elf
+\end{DoxyCode}
+ Further G\+DB on S\+TM reading\+:
+\end{DoxyEnumerate}
+
+\href{https://www.st.com/resource/en/user_manual/dm00613038-stm32cubeide-stlink-gdb-server-stmicroelectronics.pdf}{\tt https\+://www.\+st.\+com/resource/en/user\+\_\+manual/dm00613038-\/stm32cubeide-\/stlink-\/gdb-\/server-\/stmicroelectronics.\+pdf}
+
+Note that this pdf uses the S\+T\+M\+Cube G\+DB server, not the open source stlink one. However, from the perspective of the G\+DB client, there isn\textquotesingle{}t a difference. Page 6/15 of the pdf shows how to use breakpoints and watchpoints.
+
+\section*{How to use serial}
+
+You can use G\+NU screen to interact with the board over serial. Note this program does not provide echo so your text won\textquotesingle{}t appear on the screen as you type. The blinking indicators on whatever U\+SB to U\+A\+RT device you are using will indicate if the command works. 
+\begin{DoxyCode}
+$ screen [PORT] 115200
+\end{DoxyCode}
+ 
+\begin{DoxyCode}
+\{[PORT]```\}
+
+Example:
+\end{DoxyCode}
+ \$ screen /dev/tty\+U\+S\+B0 115200 \`{}\`{}\`{}
+
+\section*{Directories}
+
+
+\begin{DoxyItemize}
+\item my-\/project contains the program
+\item my-\/common-\/code contains shared files from libopencm3
+\end{DoxyItemize}
+
+\section*{Breadboard setup}
+
+Development for this project currently uses a bluepill dev board. The following table shows how the pins are connected to the S\+X127x and U\+SB to U\+A\+RT. Please read the warnings at the end of the section before attempting to the breadboard this.
+
+\tabulinesep=1mm
+\begin{longtabu} spread 0pt [c]{*{2}{|X[-1]}|}
+\hline
+\rowcolor{\tableheadbgcolor}\multicolumn{2}{|p{(\linewidth-\tabcolsep*2-\arrayrulewidth*1)*2/2}|}{\cellcolor{\tableheadbgcolor}\textbf{ Functi   }}\\\cline{1-2}
+\endfirsthead
+\hline
+\endfoot
+\hline
+\rowcolor{\tableheadbgcolor}\multicolumn{2}{|p{(\linewidth-\tabcolsep*2-\arrayrulewidth*1)*2/2}|}{\cellcolor{\tableheadbgcolor}\textbf{ Functi   }}\\\cline{1-2}
+\endhead
+Serial TX  &P\+A9   \\\cline{1-2}
+Serial RX  &P\+A10   \\\cline{1-2}
+I\+RQ  &P\+A0   \\\cline{1-2}
+M\+O\+SI  &P\+A7   \\\cline{1-2}
+M\+I\+SO  &P\+A6   \\\cline{1-2}
+S\+CK  &P\+A5   \\\cline{1-2}
+C\+S/\+SS  &A1   \\\cline{1-2}
+R\+ST  &B9   \\\cline{1-2}
+Address Bit 0  &B10   \\\cline{1-2}
+Address Bit 1  &B11   \\\cline{1-2}
+\end{longtabu}
+
+
+
+\begin{DoxyItemize}
+\item Serial T\+X/\+RX should connect to a U\+S\+B/\+U\+A\+RT chip.
+\item I\+RQ should connect to D\+I\+O0 on the S\+X127x. (May be called D0 or G0 on a breakout board)
+\item M\+O\+SI,M\+I\+SO,S\+CK, and SS should connect from the bluepill to the appropriate pins on the S\+X127x breakout.
+\item R\+ST should connect from the bluepill to the appropriate pin on the S\+X1276x breakout.
+\item Address bits 0 and 1 should run from the bluepill to 3.\+3v or ground.
+\end{DoxyItemize}
+
+\begin{quote}
+\+:warning\+: {\bfseries Do not power the bluepill from more than one voltage source.} This will damage the regulator on the P\+CB. \end{quote}
+
+
+\begin{quote}
+\+:warning\+: {\bfseries Power the S\+X127x or S\+X127x dev board with 3.\+3 volts O\+N\+LY.} The layout of the pins above routes signals from the S\+X127x into pins of the bluepill that are N\+OT 5 volt tolerant. The Adafruit S\+X127x breakout will emit 5 volt logic signals and damage the bluepill if powered from 5 volts. \end{quote}
+
+
+\subsection*{Recommeded way to power the boards}
+
+
+\begin{DoxyEnumerate}
+\item Power the bluepill from 5 volts from the U\+SB to U\+A\+RT. The bluepill will regulate this down to 3.\+3 volts for its own use. Alternatively, the bluepill may be powered with 3.\+3 volts from a regulator on the U\+SB to U\+A\+RT.
+\item Power the S\+X127x from a decent 3.\+3 volt regulator. The bluepill\textquotesingle{}s 3.\+3 volt regulator is not good enough for the task. Use the one on your U\+SB to U\+A\+RT if it\textquotesingle{}s present.
+\item Leave 3.\+3 volts on the S\+T-\/\+Link programmer disconnected.
+\end{DoxyEnumerate}
+
+\section*{T\+O\+DO}
+
+
+\begin{DoxyEnumerate}
+\item Test un-\/acked packets
+\item Write packet router
+\item Implement U\+SB and phase out U\+A\+RT
+\item Write up documentation
+\item Improve backoff\+\_\+rng in packet\+\_\+handler so it doesn\textquotesingle{}t exhaust the entropy pool quickly
+\item Improve organization of hardware setup
+\end{DoxyEnumerate}
+
+\section*{Obtaining a breakout board}
+
+The adafruit breakout board can occupy too much space to access all the pins and can be expensive. You can obtain a bare breakout board here\+:
+
+\href{https://oshpark.com/shared_projects/1Yl3TOYu}{\tt }
+
+
+
+The R\+F\+M95 radio module can be obtained from aliexpress or banggood for under five dollars a piece.
+
+\section*{Notes}
+
+\subsection*{S\+X127x Notes}
+
+
+\begin{DoxyItemize}
+\item The reset pin on the adafruit breakout board must be held L\+OW in order for the device to function, contrary to the instructions on the adafruit website.
+\item The reset pin must be pulled low momentarily in order to reset the device when the mcu reboots. This guarantees registers are reset to the original state. Failing to do this can cause weird behavior.
+\item In order to clear the I\+RQ flags register, zeros must be written twice over S\+PI. This is a hardware bug.
+\item When putting the S\+X127x into Lo\+Ra mode, it must be put into the S\+L\+E\+EP mode first. Not S\+T\+A\+N\+D\+BY or any other modes.
+\item The S\+PI master may not write to the F\+I\+FO outside of S\+T\+A\+N\+D\+BY mode
+\item The F\+I\+FO is not always cleared during a mode change. Never assume the F\+I\+FO is automatically cleared
+\item Explicit header mode in SF=6 does not work. The automatic modulation config function in this software will not reject that modulation config.
+\item This code does not touch the \char`\"{}sync word\char`\"{} byte that lets Lo\+Ras reject packets automatically. \subsection*{Bluepill Dev Board Notes}
+\end{DoxyItemize}
+
+
+\begin{DoxyItemize}
+\item The P\+C13 L\+ED on the \char`\"{}bluepill\char`\"{} dev board has it\textquotesingle{}s A\+N\+O\+DE tied to 3.\+3 volts and it\textquotesingle{}s C\+A\+T\+H\+O\+DE tied to P\+C13 (for some reason). This means P\+C13 must be pulled low to turn on the L\+ED.
+\item Do not attempt to power the S\+X127x from the bluepill\textquotesingle{}s 3.\+3 volt supply. The on-\/board regulator cannot accomplish the task during RX or TX. Your S\+X127x will brown out and reset. \subsection*{U\+SB to U\+A\+RT Notes}
+\end{DoxyItemize}
+
+
+\begin{DoxyItemize}
+\item Using an Arduino board with the C\+H430 U\+SB to U\+A\+RT chip as your U\+SB to U\+A\+RT device,is not a simple task. What is labelled as TX on the P\+CB (but is actually RX from the Arduino\textquotesingle{}s perspective) can be put into a 5 volt tolerant TX pin of your dev board. Here comes the hard part. What is laballed as RX on the P\+CB (actually TX from the Arduino\textquotesingle{}s perspective) won\textquotesingle{}t work if you just plug it into the RX pin of your dev board. You need to solder directly to the C\+H430 chip. Consult the datasheet to find where the C\+H430\textquotesingle{}s TX pin is. The letter at the end of \char`\"{}\+C\+H430\char`\"{} matters a great deal.
+\end{DoxyItemize}
+
+\section*{Yee\+: \href{https://youtu.be/IEPv31_E__4}{\tt https\+://youtu.\+be/\+I\+E\+Pv31\+\_\+\+E\+\_\+\+\_\+4}}
+
+ 
