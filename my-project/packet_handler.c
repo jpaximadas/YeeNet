@@ -15,6 +15,7 @@
 
 #define PACKET_PROCESS_OFFSET_MS 1
 
+void handler_failure(void * param);
 
 void handler_failure(void * param){
 	struct packet_handler *this_handler = (struct packet_handler *) param;
@@ -22,12 +23,16 @@ void handler_failure(void * param){
 	this_handler->my_state = UNLOCKED;
 }
 
+void handler_success(void * param);
+
 void handler_success(void * param){
 	struct packet_handler *this_handler = (struct packet_handler *) param;
 	remove_timed_callback(this_handler->my_timed_callback);
 	this_handler->last_packet_status = SUCCESS;
 	this_handler->my_state = UNLOCKED;
 }
+
+void handler_post_tx(void * param);
 
 void handler_post_tx(void * param){
 	struct packet_handler *this_handler = (struct packet_handler *) param;
@@ -37,6 +42,8 @@ void handler_post_tx(void * param){
 }
 
 uint8_t handicap_counter = 0;
+
+void handler_post_rx(void * param);
 
 void handler_post_rx(void * param){
 
@@ -208,6 +215,8 @@ void handler_setup
 
 	modem_listen(this_handler->my_modem);
 }
+
+uint32_t backoff_rng(uint8_t bits);
 
 uint32_t backoff_rng(uint8_t bits){
 	uint32_t mask = 0xffffffff;

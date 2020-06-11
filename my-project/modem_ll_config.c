@@ -1,42 +1,44 @@
 
 #include <modem_ll_config.h>
-
 #include <sys/types.h>
 #include <stdbool.h>
 
 uint32_t get_bandwidth(enum bandwidth_setting bandwidth){
+	uint32_t retval = 7800;
 	switch(bandwidth){
+
 		case bandwidth_7800:
-			return 7800;
+			retval = 7800;
 			break;
 		case bandwidth_10400:
-			return 10400;
+			retval = 10400;
 			break;
 		case bandwidth_15600:
-			return 15600;
+			retval = 15600;
 			break;
 		case bandwidth_20800:
-			return 20800;
+			retval = 20800;
 			break;
 		case bandwidth_31250:
-			return 31250;
+			retval = 31250;
 			break;
 		case bandwidth_41700:
-			return 41700;
+			retval = 41700;
 			break;
 		case bandwidth_62500:
-			return 62500;
+			retval = 62500;
 			break;
 		case bandwidth_125000:
-			return 125000;
+			retval = 125000;
 			break;
 		case bandwidth_250000:
-			return 250000;
+			retval = 250000;
 			break;
 		case bandwidth_500000:
-			return 500000;
+			retval = 500000;
 			break;
 	}
+	return retval;
 }
 
 struct modulation_config long_range_modulation = {

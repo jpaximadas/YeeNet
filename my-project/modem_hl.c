@@ -19,7 +19,9 @@
 #define FREQ_TO_REG(in_freq) ((uint32_t)(( ((uint64_t)in_freq) << 19) / FXOSC))
 #define REG_TO_FREQ(in_reg) ((uint32_t)((FXOSC*in_reg) >> 19))
 
-void dummy_callback(void * param){
+static void dummy_callback(void * param);
+
+static void dummy_callback(void * param){
 	return;
 }
 
@@ -227,6 +229,8 @@ enum payload_status modem_get_payload(struct modem *this_modem, uint8_t buf_out[
     lora_read_fifo(this_modem, buf_out, *length, ptr);
     return retval;
 }
+
+double ceil(double num);
 
 double ceil(double num) {
     int32_t inum = (int32_t)num; //cast to floor

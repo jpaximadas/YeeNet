@@ -25,8 +25,6 @@
 
 static struct modem lora0;
 
-static struct packet_handler lora0_handler;
-
 static struct modem_hw dev_breadboard = {
 		
 	.spi_interface = SPI1,
@@ -50,6 +48,8 @@ static struct modem_hw dev_breadboard = {
 	.irq_pin = GPIO0
 	
 };
+
+void clock_setup(void);
 
 void clock_setup(void) {
 	rcc_clock_setup_in_hse_8mhz_out_72mhz();
@@ -79,11 +79,15 @@ void clock_setup(void) {
 
 #if 1
 
+static struct packet_handler lora0_handler;
+
 static struct packet_data incoming_packet;
 
 static struct packet_data outgoing_packet;
 
 bool pkt_avail = false;
+
+void capture_packet(void *param);
 
 void capture_packet(void * param){
 	pkt_avail = true;

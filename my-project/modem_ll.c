@@ -18,9 +18,7 @@
 #include <libopencm3/cm3/systick.h>
 #include <libopencm3/stm32/usart.h> //debug
 
-
-
-//static struct modem *exti0_modem;
+//function prototypes
 
 struct modem * volatile exti0_modem  = NULL;
 
@@ -299,7 +297,7 @@ void seed_random(struct modem *this_modem) {
     srand((long) new_seed);
     lora_write_reg(this_modem,LORA_REG_OP_MODE,MODE_LORA | MODE_STDBY);
 }
-
+/*
 void lora_dbg_print_irq(uint8_t data) {
     if(data & LORA_MASK_IRQFLAGS_RXTIMEOUT)
         fputs("RX timed out\r\n", fp_uart);
@@ -325,3 +323,4 @@ void lora_dbg_print_irq(uint8_t data) {
     if(data & LORA_MASK_IRQFLAGS_CADDETECTED)
         fputs("Channel activity detected\r\n", fp_uart);
 }
+*/
