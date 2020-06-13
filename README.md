@@ -18,7 +18,7 @@ Subsequent changes to the source files only require ```make -C my-project```
 This repository uses the stlink open source STM32 MCU programming toolset:
 https://github.com/stlink-org/stlink
 
- 1. Ensure BOOT0 is not set such that the board will erase the memory after being programmed
+ 1. Ensure BOOT0 is not set such that the board will erase the memory after a reset
  2. Ensure SWDIO, SWCLK, and GND are connected to the MCU (only connect 3.3V if you intend to power the board from the programmer)
  3. Program the chip:
   ```
@@ -95,12 +95,20 @@ Development for this project currently uses a bluepill dev board. The following 
 3. Leave 3.3 volts on the ST-Link programmer disconnected.
 
 # TODO
-1. Test un-acked packets
+1. Work on packet handler
+    1. Test un-acked packets
+    2. How do acks affect the packet handler when working with unacked packets
+    3. Does TX snooze feature work?
+    4. Prevent packet_handler from dereferencing tx_pkt null pointer immediately after setup when RX'ing a nack?
+    5. Provide higher layers function to move location of rx_pkt pointer in packet_handler
 2. Write packet router
-3. Implement USB and phase out UART
+3. Implement USB and retain UART functionality
 4. Write up documentation
+5. Guard fprintf debug lines using seperate defines to enable debug for different files
 5. Improve backoff_rng in packet_handler so it doesn't exhaust the entropy pool quickly
 6. Improve organization of hardware setup
+7. Start repo for user interface (use dear imgui)
+8. Add SX127x FSK functionality to modem_xl.c
 
 # Obtaining a breakout board
 

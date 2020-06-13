@@ -208,8 +208,6 @@ void handler_setup
 	this_handler->backoffs = 0;	
 
 	this_handler->backoffs_max = _backoffs_max;
-
-	this_handler->wait_for_cleanup = false;
 	
 	modem_attach_callbacks(this_handler->my_modem,&handler_post_rx,&handler_post_tx,this_handler);
 
@@ -285,7 +283,9 @@ bool handler_request_transmit(struct packet_handler *this_handler, struct packet
 	return true;
 }
 
-void handler_backoff_retransmit(void * param){
+static void handler_backoff_retransmit(void * param);
+
+static void handler_backoff_retransmit(void * param){
 	struct packet_handler *this_handler = (struct packet_handler *) param;
 
 
