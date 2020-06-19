@@ -196,7 +196,9 @@ void handler_setup
  * @return whether or not the packet handler is starting the transmission
  */
 bool handler_request_transmit(struct packet_handler *this_handler, struct packet_data *pkt);
- 
+
+static void handler_backoff_retransmit(void * param);
+
 static inline void handler_rx_cleanup(struct packet_handler *this_handler, bool tx_on_cleanup){
 
 	if(tx_on_cleanup){

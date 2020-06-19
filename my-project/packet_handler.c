@@ -283,7 +283,7 @@ bool handler_request_transmit(struct packet_handler *this_handler, struct packet
 	return true;
 }
 
-static void handler_backoff_retransmit(void * param);
+
 
 static void handler_backoff_retransmit(void * param){
 	struct packet_handler *this_handler = (struct packet_handler *) param;
