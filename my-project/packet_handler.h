@@ -212,7 +212,7 @@ static inline void handler_rx_cleanup(struct packet_handler *this_handler, bool 
 	if(tx_on_cleanup){
 
 		modem_transmit(this_handler->my_modem);
-		fprintf(fp_uart,"[DEBUG] transmitted ack\r\n");
+
 	}else{
 		if(this_handler->tx_snooze){ //this part probably doesn't work
 			handler_backoff_retransmit(this_handler);

@@ -150,8 +150,9 @@ void handler_post_rx(void * param){
 
 		default:
 		{
-				tx_on_cleanup = true;
-				modem_load_payload(this_handler->my_modem,(uint8_t *) &(this_handler->my_nack),sizeof(struct packet_nack));
+				fprintf(fp_uart,"[DEBUG] invalid packet type\r\n");
+				//tx_on_cleanup = true;
+				//modem_load_payload(this_handler->my_modem,(uint8_t *) &(this_handler->my_nack),sizeof(struct packet_nack));
 			break;
 		}
 	}
