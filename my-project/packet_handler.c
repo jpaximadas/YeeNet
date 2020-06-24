@@ -83,7 +83,7 @@ void handler_post_rx(void * param){
 					if(cur_ack->dest==0x00 || cur_ack->dest==this_handler->my_addr){ //is the packet addressed to this node
 						if(this_handler->tx_pkt->type == DATA_ACKED){ //is this node waiting for an ack
 							if(this_handler->tx_pkt->dest == cur_ack->src){ //is this ack from the node being TX'ed to
-					
+								
 								remove_timed_callback(this_handler->my_timed_callback);
 								handler_success(this_handler);
 							}
@@ -121,7 +121,7 @@ void handler_post_rx(void * param){
 		{
 				
 				if(this_handler->rx_pkt->dest==0x00 || this_handler->rx_pkt->dest == this_handler->my_addr){
-					
+					/*
 					if(handicap_counter<2){
 						fprintf(fp_uart,"HANDICAP\r\n");
 						handicap_counter++;
@@ -129,7 +129,7 @@ void handler_post_rx(void * param){
 						return;
 					}
 					handicap_counter = 0;
-
+					*/
 					this_handler->my_ack.dest = this_handler->rx_pkt->src;
 					tx_on_cleanup = true;
 					modem_load_payload(this_handler->my_modem,(uint8_t *) &(this_handler->my_ack),sizeof(struct packet_ack));
@@ -212,6 +212,10 @@ void handler_setup
 	modem_attach_callbacks(this_handler->my_modem,&handler_post_rx,&handler_post_tx,this_handler);
 
 	modem_listen(this_handler->my_modem);
+}
+
+void set_rx_pkt_pointer(struct packet_handler *this_handler, struct packet_data *new_location){
+	this_handler->rx_pkt = new_location;
 }
 
 uint32_t backoff_rng(uint8_t bits);

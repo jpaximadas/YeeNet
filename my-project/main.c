@@ -104,17 +104,35 @@ int main(void) {
 	local_address_setup();
 	fprintf(fp_uart,"Local address: %x\r\n",local_address_get());
 
-	if(local_address_get()!=1 && local_address_get()!=2){
-		fprintf(fp_uart,"Address must be 1 or 2. Halting execution");
+	if(local_address_get()!=1 && local_address_get()!=2 && local_address_get()!=3){
+		fprintf(fp_uart,"Address must be 1, 2, or 3. Halting execution");
 		for(;;);
 	}
 
 	outgoing_packet.src = local_address_get();
-	outgoing_packet.dest = local_address_get() == 1 ? 2 : 1;
-	outgoing_packet.type = DATA_ACKED;
+	switch(local_address_get()){
+		case 1:
+			outgoing_packet.dest = 2;
+			outgoing_packet.type = DATA_ACKED;
+			break;
+		case 2:
+			outgoing_packet.dest = 1;
+			outgoing_packet.type = DATA_ACKED;
+			break;
+		case 3:
+			outgoing_packet.dest = 0;
+			outgoing_packet.type = DATA_UNACKED;
+			break;
+		default:
+		 	outgoing_packet.dest = 0;
+			 outgoing_packet.type = DATA_UNACKED;
+			 break;
+
+	}
+	
 
     callback_timer_setup();
-	modem_setup(&lora0,&dev_breadboard); //this needs to cocur first
+	modem_setup(&lora0,&dev_breadboard); //this needs to occur first
 
 	handler_setup(&lora0_handler, &lora0, &incoming_packet, &capture_packet, &lora0_handler, PERSISTENT, 4);
 

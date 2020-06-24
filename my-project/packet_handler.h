@@ -197,6 +197,14 @@ void handler_setup
  */
 bool handler_request_transmit(struct packet_handler *this_handler, struct packet_data *pkt);
 
+/**
+ * Change location a new packet is written to
+ * 
+ * @param this_handler pointer to handler struct
+ * @param new_location pointer to packet_data struct
+ */
+void set_rx_pkt_pointer(struct packet_handler *this_handler, struct packet_data *new_location);
+
 static void handler_backoff_retransmit(void * param);
 
 static inline void handler_rx_cleanup(struct packet_handler *this_handler, bool tx_on_cleanup){

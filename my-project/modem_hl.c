@@ -111,7 +111,7 @@ bool modem_setup(
     lora_config_modulation(this_modem,&default_modulation);
 	switch(this_modem->modulation->spreading_factor){
 		case SF6:
-			this_modem->extra_time_ms = 1;
+			this_modem->extra_time_ms = 5;
 			break;
 		case SF7:
 			this_modem->extra_time_ms = 1;

@@ -3,6 +3,7 @@
 #include <libopencm3/cm3/nvic.h>
 #include <libopencm3/cm3/systick.h>
 #include "callback_timer.h"
+#include "uart.h"
 
 #define NUM_CALLBACKS 6 //arbitrary number
 struct timed_callback callbacks[NUM_CALLBACKS];
@@ -18,12 +19,13 @@ void sys_tick_handler(void){
 	for(int i = 0; i<NUM_CALLBACKS;i++){
 		
 		if(timer_ms==0){callbacks[i].wait_rollover = false;} //if a rollover occurs, remove rollover waiting
-			
+		
 		if(
 			!(callbacks[i].is_stale) &&
 			callbacks[i].time <= timer_ms &&
 			!(callbacks[i].wait_rollover) 
 		){
+			//fprintf(fp_uart,"dereferencing function pointer at position %x \r\n",i);
 			callbacks[i].is_stale = true;
 			(*(callbacks[i].callback_function))(callbacks[i].param);
 			
@@ -60,6 +62,7 @@ bool add_timed_callback(uint32_t offset, void (*_callback_function)(void *), voi
 			callbacks[i].param = _param;
 			callbacks[i].is_stale = false;
 			*pos = (callback_id_t) i; //report array position
+			//fprintf(fp_uart,"added callback at %x\r\n",i );
 			
 			return true;
 		}
@@ -69,6 +72,7 @@ bool add_timed_callback(uint32_t offset, void (*_callback_function)(void *), voi
 }
 
 void remove_timed_callback(callback_id_t pos){
+	//fprintf(fp_uart,"removed callback at %x\r\n",(uint8_t) pos);
 	callbacks[(uint8_t) pos].is_stale = true;
 }
 
