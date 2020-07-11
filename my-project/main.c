@@ -64,15 +64,15 @@ void clock_setup(void) {
 	rcc_periph_clock_enable(RCC_GPIOC);
 
 	rcc_periph_clock_enable(RCC_AFIO);
-
-	/* Enable clocks for USART1. */
-	rcc_periph_clock_enable(RCC_USART1);
 	
 	//enable clock for spi
 	rcc_periph_clock_enable(RCC_SPI1);
 	
 	//enable clock for timer2
 	rcc_periph_clock_enable(RCC_TIM2);
+
+	//enable clock for dma1
+	rcc_periph_clock_enable(RCC_DMA1);
 }
 
 //packet_handler layer tester
@@ -97,9 +97,16 @@ void capture_packet(void * param){
 int main(void) {
 	
 	clock_setup();
-    fp_uart = uart_setup();
+    fp_uart = usart1_setup(115200);
 
-    fprintf(fp_uart,"start setup...\r\n");
+	for(;;){
+		int8_t sheeit = usart_recv_blocking(USART1);
+		if(sheeit == '\0'){
+			fprintf(fp_uart,"got terminator: %x\r\n",sheeit);
+		}
+
+		usart1_terminate();
+	}
 
 	local_address_setup();
 	fprintf(fp_uart,"Local address: %x\r\n",local_address_get());

@@ -1,24 +1,27 @@
 
 #define _GNU_SOURCE
+
 #include "uart.h"
-
-
 #include <stdbool.h>
-#include <libopencm3/stm32/usart.h>
 #include <stdio.h>
+#include <libopencm3/stm32/usart.h>
 #include <sys/types.h>
 #include <libopencm3/stm32/gpio.h>
 #include <errno.h>
 #include <stddef.h>
 #include <string.h>
+#include <libopencm3/stm32/rcc.h>
+#include <libopencm3/stm32/dma.h>
+#include <libopencm3/cm3/nvic.h>
 
-//static ssize_t _iord(void *_cookie, char *_buf, size_t _n);
-//static ssize_t _iowr(void *_cookie, const char *_buf, size_t _n);
+static ssize_t usart_read(void *_cookie, char *_buf, size_t _n);
+static ssize_t usart_write(void *_cookie, const char *_buf, size_t _n);
 
-FILE *fp_uart = NULL; //run uart_setup to intialize
+FILE *fp_uart = NULL; //run uart_setup to initialize
 
+struct cobs_tx_buffer usart1_cobs_tx_buffer;
 
-ssize_t _iord(void *_cookie, char *_buf, size_t _n)
+ssize_t usart_read(void *_cookie, char *_buf, size_t _n)
 {
 	/* dont support reading now */
 	(void)_cookie;
@@ -27,48 +30,132 @@ ssize_t _iord(void *_cookie, char *_buf, size_t _n)
 	return 0;
 }
 
-ssize_t _iowr(void *_cookie, const char *_buf, size_t _n)
-{
-	uint32_t dev = (uint32_t)_cookie;
+volatile bool dma1_in_use = false;
 
-	int written = 0;
-	while (_n-- > 0) {
-		usart_send_blocking(dev, *_buf++);
-		written++;
-	};
-	return written;
+ssize_t usart_write(void *_cookie, const char *_buf, size_t _n)
+{
+	struct cobs_tx_buffer *tx_buf = (struct cobs_tx_buffer*)_cookie;
+	uint16_t i = 0;
+
+	while( dma1_in_use || !usart_get_flag(USART1,USART_SR_TXE) ){} //block while usart/DMA is busy
+
+	while(tx_buf->pos < TX_BUFF_SIZE-ENCODING_OVH_END && i<_n){
+
+		if( (tx_buf->pos - tx_buf->last_zero_pos) != 0xFF ){
+			//overhead byte not needed
+			if(_buf[i]){
+				//next byte in input buffer is not zero
+				tx_buf->buf[tx_buf->pos] = _buf[i]; //write it
+				//move to next character in the input buffer
+			}else{
+				//next byte in intput buffer is zero
+				tx_buf->buf[tx_buf->last_zero_pos] = tx_buf->pos - tx_buf->last_zero_pos; //fill in the last zero position with the distance to this zero
+				tx_buf->last_zero_pos = tx_buf->pos; //record the position of this next zero
+
+			}
+			i++; //move ahead to the next bute in the input buffer
+			tx_buf->pos++; //move ahead to the next byte in the tx buffer
+		} else {
+			//254 bytes of nonzero characters precede this point in the buffer; a non-data overhead byte is needed
+			tx_buf->buf[tx_buf->last_zero_pos] = 0xFF; //fill in the last zero position with the distance to this zero
+			tx_buf->last_zero_pos = tx_buf->pos; //record the position of this next zero
+			tx_buf->pos++; //move ahead in the tx buffer but not the intput buffer
+		}
+
+	}
+	
+	return i;
 }
 
-FILE *uart_setup(void) {
-	/* Enable the USART1 interrupt. */
-	//nvic_enable_irq(NVIC_USART1_IRQ);
 
-	/* Setup GPIO pin GPIO_USART1_RE_TX on GPIO port A for transmit. */
+void cobs_tx_buffer_reset(struct cobs_tx_buffer *tx_buf){
+	tx_buf->last_zero_pos = 0; //let writer write over the first byte to indicate position of next zero
+	tx_buf->pos = ENCODING_OVH_START; //start writing at beginning of data section
+}
+
+
+void usart1_terminate(void){
+	//cap off the tx buffer
+	usart1_cobs_tx_buffer.buf[usart1_cobs_tx_buffer.pos] = 0x00;
+	usart1_cobs_tx_buffer.buf[usart1_cobs_tx_buffer.last_zero_pos]  = usart1_cobs_tx_buffer.pos - usart1_cobs_tx_buffer.last_zero_pos;
+
+
+	while( dma1_in_use || !usart_get_flag(USART1,USART_SR_TXE) ){}
+	dma1_in_use = true;
+
+	dma_channel_reset(DMA1, DMA_CHANNEL4);
+
+	dma_set_peripheral_address(DMA1, DMA_CHANNEL4, (uint32_t)&USART1_DR);
+	dma_set_memory_address(DMA1, DMA_CHANNEL4, (uint32_t)usart1_cobs_tx_buffer.buf);
+	dma_set_number_of_data(DMA1, DMA_CHANNEL4, usart1_cobs_tx_buffer.pos+1);
+	dma_set_read_from_memory(DMA1, DMA_CHANNEL4);
+	dma_enable_memory_increment_mode(DMA1, DMA_CHANNEL4);
+	dma_set_peripheral_size(DMA1, DMA_CHANNEL4, DMA_CCR_PSIZE_8BIT);
+	dma_set_memory_size(DMA1, DMA_CHANNEL4, DMA_CCR_MSIZE_8BIT);
+	dma_set_priority(DMA1, DMA_CHANNEL4, DMA_CCR_PL_VERY_HIGH);
+
+	dma_enable_transfer_complete_interrupt(DMA1, DMA_CHANNEL4);
+
+	dma_enable_channel(DMA1, DMA_CHANNEL4);
+
+    usart_enable_tx_dma(USART1);
+
+	
+}
+
+void dma1_channel4_isr(void)
+{
+	if ((DMA1_ISR &DMA_ISR_TCIF4) != 0) {
+		DMA1_IFCR |= DMA_IFCR_CTCIF4;
+
+	}
+
+	dma_disable_transfer_complete_interrupt(DMA1, DMA_CHANNEL4);
+
+	usart_disable_tx_dma(USART1);
+
+	dma_disable_channel(DMA1, DMA_CHANNEL4);
+
+	dma1_in_use = false;
+
+	cobs_tx_buffer_reset(&usart1_cobs_tx_buffer);
+}
+
+
+FILE *usart1_setup(uint32_t baud) {
+	//init cobs tx buffer
+	rcc_periph_clock_enable(RCC_USART1);
+
 	gpio_set_mode(GPIOA, GPIO_MODE_OUTPUT_50_MHZ,
-		      GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, GPIO_USART1_TX);
-
-	/* Setup GPIO pin GPIO_USART1_RE_RX on GPIO port A for receive. */
+		GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, GPIO_USART1_TX);
 	gpio_set_mode(GPIOA, GPIO_MODE_INPUT,
-		      GPIO_CNF_INPUT_FLOAT, GPIO_USART1_RX);
+		GPIO_CNF_INPUT_FLOAT, GPIO_USART1_RX);
+
+	
 
 	/* Setup UART parameters. */
-	usart_set_baudrate(USART1, 115200);
-	usart_set_databits(USART1, 8);
+	usart_set_baudrate(USART1, baud);
+	usart_set_databits(USART1,8);
 	usart_set_stopbits(USART1, USART_STOPBITS_1);
 	usart_set_parity(USART1, USART_PARITY_NONE);
 	usart_set_flow_control(USART1, USART_FLOWCONTROL_NONE);
 	usart_set_mode(USART1, USART_MODE_TX_RX);
 
-	/* Enable USART1 Receive interrupt. */
-	//USART_CR1(USART1) |= USART_CR1_RXNEIE;
+	//enable DMA channel 4 for USART1 TX
+	nvic_set_priority(NVIC_DMA1_CHANNEL4_IRQ, 0);
+	nvic_enable_irq(NVIC_DMA1_CHANNEL4_IRQ);
 
 	/* Finally enable the USART. */
 	usart_enable(USART1);
 	
-	cookie_io_functions_t stub = { _iord, _iowr, NULL, NULL };
-	FILE *fp = fopencookie((void *)USART1, "rw+", stub);
+	cobs_tx_buffer_reset(&usart1_cobs_tx_buffer);
+
+	cookie_io_functions_t stub = { usart_read, usart_write, NULL, NULL };
+	FILE *fp = fopencookie((void *) &usart1_cobs_tx_buffer, "rw+", stub);
+
 	/* Do not buffer the serial line */
 	setvbuf(fp, NULL, _IONBF, 0);
+
 	return fp;
 }
 
