@@ -96,7 +96,7 @@ Development for this project currently uses a bluepill dev board. The following 
 
 # TODO
 1. Work on packet handler
-    1. Test un-acked packets
+    1. Improve failure mode when an ack arrives late
     2. How do acks affect the packet handler when working with unacked packets
     3. Does TX snooze feature work?
     4. Prevent packet_handler from dereferencing tx_pkt null pointer immediately after setup when RX'ing a nack?
@@ -104,7 +104,7 @@ Development for this project currently uses a bluepill dev board. The following 
 2. Write packet router
 3. Implement USB and retain UART functionality
 4. Write up documentation
-5. Guard fprintf debug lines using seperate defines to enable debug for different files
+5. Guard fprintf debug lines using separate defines to enable debug for different files
 5. Improve backoff_rng in packet_handler so it doesn't exhaust the entropy pool quickly
 6. Improve organization of hardware setup
 7. Start repo for user interface (use dear imgui)
