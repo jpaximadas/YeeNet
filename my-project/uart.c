@@ -14,32 +14,22 @@
 #include <libopencm3/stm32/dma.h>
 #include <libopencm3/cm3/nvic.h>
 
-static ssize_t usart_read(void *_cookie, char *_buf, size_t _n);
-static ssize_t usart_write(void *_cookie, const char *_buf, size_t _n);
-
-FILE *fp_uart = NULL; //run uart_setup to initialize
-
-struct cobs_tx_buffer usart1_cobs_tx_buffer;
-
-ssize_t usart_read(void *_cookie, char *_buf, size_t _n)
-{
-	/* dont support reading now */
-	(void)_cookie;
-	(void)_buf;
-	(void)_n;
-	return 0;
-}
+struct cobs_tx_buffer usart1_cobs_tx_buffer = {
+	.buffer_type = TX_BUFFER
+};
+struct cobs_rx_buffer usart1_cobs_rx_buffer = {
+	.buffer_type = RX_BUFFER
+};
 
 volatile bool dma1_in_use = false;
 
-ssize_t usart_write(void *_cookie, const char *_buf, size_t _n)
-{
-	struct cobs_tx_buffer *tx_buf = (struct cobs_tx_buffer*)_cookie;
+//general purpose usart write function
+static ssize_t usart_write(struct cobs_tx_buffer *tx_buf, uint8_t *_buf, size_t _n) {
 	uint16_t i = 0;
 
-	while( dma1_in_use || !usart_get_flag(USART1,USART_SR_TXE) ){} //block while usart/DMA is busy
+	while( dma1_in_use || !usart_get_flag(USART1,USART_SR_TXE) ){} //block while usart/DMA is busy writing the buffer
 
-	while(tx_buf->pos < TX_BUFF_SIZE-ENCODING_OVH_END && i<_n){
+	while(tx_buf->pos < COBS_TX_BUF_SIZE-ENCODING_OVH_END && i<_n){
 
 		if( (tx_buf->pos - tx_buf->last_zero_pos) != 0xFF ){
 			//overhead byte not needed
@@ -57,9 +47,9 @@ ssize_t usart_write(void *_cookie, const char *_buf, size_t _n)
 			tx_buf->pos++; //move ahead to the next byte in the tx buffer
 		} else {
 			//254 bytes of nonzero characters precede this point in the buffer; a non-data overhead byte is needed
-			tx_buf->buf[tx_buf->last_zero_pos] = 0xFF; //fill in the last zero position with the distance to this zero
-			tx_buf->last_zero_pos = tx_buf->pos; //record the position of this next zero
-			tx_buf->pos++; //move ahead in the tx buffer but not the intput buffer
+			tx_buf->buf[tx_buf->last_zero_pos] = 0xFF; //fill in the last zero position with the distance to this overhead byte
+			tx_buf->last_zero_pos = tx_buf->pos; //record the position of this overhead byte
+			tx_buf->pos++; //move ahead in the tx buffer but not the input buffer
 		}
 
 	}
@@ -67,12 +57,10 @@ ssize_t usart_write(void *_cookie, const char *_buf, size_t _n)
 	return i;
 }
 
-
-void cobs_tx_buffer_reset(struct cobs_tx_buffer *tx_buf){
-	tx_buf->last_zero_pos = 0; //let writer write over the first byte to indicate position of next zero
-	tx_buf->pos = ENCODING_OVH_START; //start writing at beginning of data section
+//wrapper for libc iostream
+static ssize_t iowr(void *_cookie, const char *_buf, size_t _n){
+	return usart_write((struct cobs_tx_buffer *) _cookie,(uint8_t *) _buf, _n);
 }
-
 
 void usart1_terminate(void){
 	//cap off the tx buffer
@@ -99,8 +87,38 @@ void usart1_terminate(void){
 	dma_enable_channel(DMA1, DMA_CHANNEL4);
 
     usart_enable_tx_dma(USART1);
+}
 
-	
+ //wrapper function for host_link
+ssize_t usart1_write_bytes(uint8_t *buf, size_t n, bool terminate_when_done){
+	ssize_t retval = usart_write(&usart1_cobs_tx_buffer, buf, n);
+	if(terminate_when_done){
+		usart1_terminate();
+	}
+	return retval;
+}
+
+static void cobs_buffer_reset(void *cobs_buffer){
+	enum cobs_buffer_type buf_type = *((uint8_t *)cobs_buffer);
+
+	switch(buf_type){
+		case TX_BUFFER:
+			{
+				struct cobs_tx_buffer *buf = (struct cobs_tx_buffer *) cobs_buffer;
+				buf->last_zero_pos = 0; //let writer write over the first byte to indicate position of next zero
+				buf->pos = ENCODING_OVH_START; //start writing at beginning of data section
+				break;
+			}
+		case RX_BUFFER:
+			{
+				struct cobs_rx_buffer *buf = (struct cobs_rx_buffer *) cobs_buffer;
+				buf->next_zero_pos = 0;
+				buf->pos = 0;
+				buf->next_zero_is_overhead = true;
+				buf->frame_is_terminated = false;
+				break;
+			}
+	}
 }
 
 void dma1_channel4_isr(void)
@@ -118,8 +136,9 @@ void dma1_channel4_isr(void)
 
 	dma1_in_use = false;
 
-	cobs_tx_buffer_reset(&usart1_cobs_tx_buffer);
+	cobs_buffer_reset(&usart1_cobs_tx_buffer);
 }
+
 
 
 FILE *usart1_setup(uint32_t baud) {
@@ -130,8 +149,6 @@ FILE *usart1_setup(uint32_t baud) {
 		GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, GPIO_USART1_TX);
 	gpio_set_mode(GPIOA, GPIO_MODE_INPUT,
 		GPIO_CNF_INPUT_FLOAT, GPIO_USART1_RX);
-
-	
 
 	/* Setup UART parameters. */
 	usart_set_baudrate(USART1, baud);
@@ -145,13 +162,22 @@ FILE *usart1_setup(uint32_t baud) {
 	nvic_set_priority(NVIC_DMA1_CHANNEL4_IRQ, 0);
 	nvic_enable_irq(NVIC_DMA1_CHANNEL4_IRQ);
 
+	cobs_buffer_reset(&usart1_cobs_tx_buffer);
+
+	//enable usart receive interrupt
+	nvic_set_priority(NVIC_DMA1_CHANNEL4_IRQ, 0);
+	nvic_enable_irq(NVIC_USART1_IRQ);
+	usart_enable_rx_interrupt(USART1);
+	cobs_buffer_reset(&usart1_cobs_rx_buffer);
+
 	/* Finally enable the USART. */
 	usart_enable(USART1);
 	
-	cobs_tx_buffer_reset(&usart1_cobs_tx_buffer);
+	
+	
 
-	cookie_io_functions_t stub = { usart_read, usart_write, NULL, NULL };
-	FILE *fp = fopencookie((void *) &usart1_cobs_tx_buffer, "rw+", stub);
+	cookie_io_functions_t stub = { NULL, iowr, NULL, NULL };
+	FILE *fp = fopencookie((void *) &usart1_cobs_tx_buffer, "w+", stub);
 
 	/* Do not buffer the serial line */
 	setvbuf(fp, NULL, _IONBF, 0);
@@ -170,4 +196,68 @@ uint8_t uart_read_until(uint32_t usart, uint8_t buf_out[256], int n, char last){
 	}
 	return pos;
 	
+}
+
+uint8_t err_chars[5] = {'E','R','R','\r','\n'};
+void usart1_isr(void){
+
+	uint8_t c = usart_recv(USART1);
+
+	if(c == 0x00){
+		if( usart1_cobs_rx_buffer.next_zero_pos == usart1_cobs_rx_buffer.pos){
+			usart_disable_rx_interrupt(USART1); //disable usart interrupt after frame termination
+			usart1_cobs_rx_buffer.frame_is_terminated = true;
+			return;
+		} else {
+			usart1_write_bytes(err_chars, 5, true);
+			cobs_buffer_reset(&usart1_cobs_rx_buffer);
+			return;
+		}
+		
+	}
+
+	if(!(usart1_cobs_rx_buffer.pos<COBS_RX_BUF_SIZE)){
+		usart1_write_bytes(err_chars, 5, true);
+		cobs_buffer_reset(&usart1_cobs_rx_buffer);
+		return;
+	}
+
+	if(usart1_cobs_rx_buffer.next_zero_pos == usart1_cobs_rx_buffer.pos){ //at a zero position
+		usart1_cobs_rx_buffer.next_zero_pos += c; //update where the next zero position is
+
+		if(!usart1_cobs_rx_buffer.next_zero_is_overhead){ //this zero position is not an overhead byte
+			usart1_cobs_rx_buffer.buf[usart1_cobs_rx_buffer.pos] = 0x00; //fill in the zero
+			usart1_cobs_rx_buffer.pos++; //move to the next character in the buffer
+		}
+		//if this zero position was overhead, the buffer does not move forward and nothing is written
+
+		//determine if the following zero position is overhead
+		if(c == 0xFF){
+			usart1_cobs_rx_buffer.next_zero_is_overhead = true;
+		} else {
+			usart1_cobs_rx_buffer.next_zero_is_overhead = false;
+		}
+		
+	} else {	//not at a zero position
+		usart1_cobs_rx_buffer.buf[usart1_cobs_rx_buffer.pos] = c;
+		usart1_cobs_rx_buffer.pos++;
+	}
+	
+}
+
+uint16_t usart1_get_command(uint8_t **buf_ptr){
+	if(usart1_cobs_rx_buffer.frame_is_terminated){
+		*buf_ptr = usart1_cobs_rx_buffer.buf; //set the pointer to the cobs buffer
+		uint16_t retval = usart1_cobs_rx_buffer.pos+1; //return the number of bytes available
+	} else {
+		return 0;
+	}
+	
+}
+
+uint8_t ready_chars[5] = {'R','D','Y','\r','\n'};
+void usart1_release(void){
+	cobs_buffer_reset(&usart1_cobs_rx_buffer);
+	usart_enable_rx_interrupt(USART1);
+	usart1_write_bytes(ready_chars, 5, true);
 }

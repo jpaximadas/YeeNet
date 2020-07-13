@@ -12,7 +12,8 @@ CFILES += api.c \
 		  util.c\
 		  callback_timer.c \
 		  address.c \
-		  packet_handler.c
+		  packet_handler.c \
+		  host_link.c
 AFILES += api-asm.S
 
 # TODO - you will need to edit these two lines!

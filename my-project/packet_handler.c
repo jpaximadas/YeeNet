@@ -3,6 +3,7 @@
 #include "address.h"
 #include "packet.h"
 #include "callback_timer.h"
+#include "host_link.h"
 
 #include "modem_ll.h"
 
@@ -37,7 +38,7 @@ void handler_post_tx(void * param);
 void handler_post_tx(void * param){
 	struct packet_handler *this_handler = (struct packet_handler *) param;
 	modem_listen(this_handler->my_modem);
-	//fprintf(fp_uart,"mode reg %x\r\n",lora_read_reg(this_handler->my_modem, LORA_REG_OP_MODE));
+	//fprintf(link.fp,"mode reg %x\r\n",lora_read_reg(this_handler->my_modem, LORA_REG_OP_MODE));
 
 }
 
@@ -123,7 +124,7 @@ void handler_post_rx(void * param){
 				if(this_handler->rx_pkt->dest==0x00 || this_handler->rx_pkt->dest == this_handler->my_addr){
 					/*
 					if(handicap_counter<2){
-						fprintf(fp_uart,"HANDICAP\r\n");
+						fprintf(link.fp,"HANDICAP\r\n");
 						handicap_counter++;
 						handler_rx_cleanup(this_handler,false);
 						return;
@@ -150,7 +151,7 @@ void handler_post_rx(void * param){
 
 		default:
 		{
-				fprintf(fp_uart,"[DEBUG] invalid packet type\r\n");
+				fprintf(link.fp,"[DEBUG] invalid packet type\r\n");
 				//tx_on_cleanup = true;
 				//modem_load_payload(this_handler->my_modem,(uint8_t *) &(this_handler->my_nack),sizeof(struct packet_nack));
 			break;
@@ -180,13 +181,13 @@ void handler_setup
 		this_handler->my_modem = _my_modem;
 
 	this_handler->ack_airtime_ms = modem_get_airtime_usec(this_handler->my_modem,sizeof(struct packet_ack))/1000 + 1;
-	fprintf(fp_uart,"estimated ack airtime: %li\r\n",this_handler->ack_airtime_ms);
+	fprintf(link.fp,"estimated ack airtime: %li\r\n",this_handler->ack_airtime_ms);
 	
 	(this_handler->my_nack).type = NACK;
 	(this_handler->my_nack).src = this_handler->my_addr;
 	
 	this_handler->nack_airtime_ms = modem_get_airtime_usec(this_handler->my_modem,sizeof(struct packet_nack))/1000 + 1;
-	fprintf(fp_uart,"estimated nack airtime: %li\r\n",this_handler->nack_airtime_ms);
+	fprintf(link.fp,"estimated nack airtime: %li\r\n",this_handler->nack_airtime_ms);
 	
 	this_handler->pkt_rdy_callback = _pkt_rdy_callback;
 	this_handler->callback_arg= _callback_arg;
@@ -242,7 +243,7 @@ bool handler_request_transmit(struct packet_handler *this_handler, struct packet
 
 	//compute and store packet airtime
 	this_handler->pkt_airtime_ms = modem_get_airtime_usec(this_handler->my_modem,this_handler->pkt_length)/1000 + 1;
-	fprintf(fp_uart,"estimated packet airtime: %li\r\n",this_handler->pkt_airtime_ms);
+	fprintf(link.fp,"estimated packet airtime: %li\r\n",this_handler->pkt_airtime_ms);
 	
 	//load the packet
 	//this also deafens the modem
@@ -259,7 +260,7 @@ bool handler_request_transmit(struct packet_handler *this_handler, struct packet
 	switch(this_handler->my_send_mode){
 		case LAZY:
 			time_ms = this_handler->pkt_airtime_ms + this_handler->ack_airtime_ms + this_handler->my_modem->extra_time_ms +PACKET_PROCESS_OFFSET_MS;
-			fprintf(fp_uart,"timout set to %lu \r\n",time_ms);
+			fprintf(link.fp,"timout set to %lu \r\n",time_ms);
 			switch(this_handler->tx_pkt->type){
 				//TODO handle add_timed_callback retval
 				case DATA_ACKED:
@@ -319,7 +320,7 @@ static void handler_backoff_retransmit(void * param){
 
 	this_handler->backoffs++;
 	uint32_t time_ms = ( 1 + backoff_rng(this_handler->backoffs)) * (this_handler->pkt_airtime_ms + this_handler->ack_airtime_ms + this_handler->my_modem->extra_time_ms + PACKET_PROCESS_OFFSET_MS);
-	fprintf(fp_uart,"waiting for: %lu\r\n",time_ms);
+	fprintf(link.fp,"waiting for: %lu\r\n",time_ms);
 
 	add_timed_callback(time_ms,&handler_backoff_retransmit,this_handler,&(this_handler->my_timed_callback));
 

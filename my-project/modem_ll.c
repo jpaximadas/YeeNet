@@ -5,6 +5,7 @@
 #include "sx127x.h"
 #include "modem_ll_config.h"
 #include "callback_timer.h" //debug
+#include "host_link.h"
 
 #include <sys/types.h>
 #include <stdbool.h>
@@ -33,6 +34,7 @@ void exti0_isr(void) {
 	//fprintf(fp_uart,"got interrupt\r\n");
     exti0_modem->irq_data = lora_read_reg(exti0_modem, LORA_REG_IRQFLAGS);
 
+    //irq flag register must be reset twice. Is this hardware errata?
     lora_write_reg(exti0_modem, LORA_REG_IRQFLAGS, 0xFF);
     lora_write_reg(exti0_modem, LORA_REG_IRQFLAGS, 0xFF);
 
@@ -50,7 +52,7 @@ void exti0_isr(void) {
 			break;
 		case INVALID:
 			//#ifdef DEBUG
-			fprintf(fp_uart,"spurious interrupt detected\r\n");
+			fprintf(link.fp,"spurious interrupt detected\r\n");
 			//#endif
 			break;
 	}

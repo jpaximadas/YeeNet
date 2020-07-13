@@ -7,6 +7,7 @@
 #include "address.h"
 #include "packet_handler.h"
 #include "packet.h"
+#include "host_link.h"
 
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
@@ -97,22 +98,19 @@ void capture_packet(void * param){
 int main(void) {
 	
 	clock_setup();
-    fp_uart = usart1_setup(115200);
-
+    host_link_init(USART);
+	fprintf(link.fp,"startup complete");
 	for(;;){
-		int8_t sheeit = usart_recv_blocking(USART1);
-		if(sheeit == '\0'){
-			fprintf(fp_uart,"got terminator: %x\r\n",sheeit);
-		}
-
-		usart1_terminate();
+		host_link_parse();
 	}
 
+	
+/*
 	local_address_setup();
-	fprintf(fp_uart,"Local address: %x\r\n",local_address_get());
+	fprintf(link.fp,"Local address: %x\r\n",local_address_get());
 
 	if(local_address_get()!=1 && local_address_get()!=2 && local_address_get()!=3){
-		fprintf(fp_uart,"Address must be 1, 2, or 3. Halting execution");
+		fprintf(link.fp,"Address must be 1, 2, or 3. Halting execution");
 		for(;;);
 	}
 
@@ -146,7 +144,7 @@ int main(void) {
 
 	
 
-	fprintf(fp_uart,"setup complete\r\n");
+	fprintf(link.fp,"setup complete\r\n");
 
 	uint8_t send_len;
 
@@ -197,6 +195,7 @@ int main(void) {
 		}
 
 	}
+	*/
 }
 #endif
 
