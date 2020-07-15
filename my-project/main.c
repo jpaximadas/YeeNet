@@ -99,7 +99,8 @@ int main(void) {
 	
 	clock_setup();
     host_link_init(USART);
-	fprintf(link.fp,"startup complete");
+	fprintf(link.fp,"startup complete\r\n");
+	usart1_terminate();
 	for(;;){
 		host_link_parse();
 	}

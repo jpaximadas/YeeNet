@@ -57,8 +57,17 @@ static ssize_t usart_write(struct cobs_tx_buffer *tx_buf, uint8_t *_buf, size_t 
 	return i;
 }
 
+ssize_t iord(void *_cookie, char *_buf, size_t _n)
+{
+	/* dont support reading now */
+	(void)_cookie;
+	(void)_buf;
+	(void)_n;
+	return 0;
+}
+
 //wrapper for libc iostream
-static ssize_t iowr(void *_cookie, const char *_buf, size_t _n){
+ssize_t iowr(void *_cookie, const char *_buf, size_t _n){
 	return usart_write((struct cobs_tx_buffer *) _cookie,(uint8_t *) _buf, _n);
 }
 
@@ -176,8 +185,8 @@ FILE *usart1_setup(uint32_t baud) {
 	
 	
 
-	cookie_io_functions_t stub = { NULL, iowr, NULL, NULL };
-	FILE *fp = fopencookie((void *) &usart1_cobs_tx_buffer, "w+", stub);
+	cookie_io_functions_t stub = { iord, iowr, NULL, NULL };
+	FILE *fp = fopencookie((void *) &usart1_cobs_tx_buffer, "rw+", stub);
 
 	/* Do not buffer the serial line */
 	setvbuf(fp, NULL, _IONBF, 0);
@@ -223,7 +232,7 @@ void usart1_isr(void){
 	}
 
 	if(usart1_cobs_rx_buffer.next_zero_pos == usart1_cobs_rx_buffer.pos){ //at a zero position
-		usart1_cobs_rx_buffer.next_zero_pos += c; //update where the next zero position is
+		usart1_cobs_rx_buffer.next_zero_pos += c-1; //update where the next zero position is
 
 		if(!usart1_cobs_rx_buffer.next_zero_is_overhead){ //this zero position is not an overhead byte
 			usart1_cobs_rx_buffer.buf[usart1_cobs_rx_buffer.pos] = 0x00; //fill in the zero
@@ -246,13 +255,14 @@ void usart1_isr(void){
 }
 
 uint16_t usart1_get_command(uint8_t **buf_ptr){
+	uint16_t retval;
 	if(usart1_cobs_rx_buffer.frame_is_terminated){
 		*buf_ptr = usart1_cobs_rx_buffer.buf; //set the pointer to the cobs buffer
-		uint16_t retval = usart1_cobs_rx_buffer.pos+1; //return the number of bytes available
+		retval = usart1_cobs_rx_buffer.pos+1; //return the number of bytes available
 	} else {
 		return 0;
 	}
-	
+	return retval;
 }
 
 uint8_t ready_chars[5] = {'R','D','Y','\r','\n'};

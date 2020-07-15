@@ -34,6 +34,7 @@ void host_link_parse(void){
     usart1_write_bytes(command,len,false);
     fprintf(link.fp,"\r\n");
     usart1_terminate();
+    usart1_release();
 
     
     
