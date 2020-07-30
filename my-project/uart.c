@@ -258,7 +258,7 @@ uint16_t usart1_get_command(uint8_t **buf_ptr){
 	uint16_t retval;
 	if(usart1_cobs_rx_buffer.frame_is_terminated){
 		*buf_ptr = usart1_cobs_rx_buffer.buf; //set the pointer to the cobs buffer
-		retval = usart1_cobs_rx_buffer.pos+1; //return the number of bytes available
+		retval = usart1_cobs_rx_buffer.pos; //return the number of bytes available
 	} else {
 		return 0;
 	}

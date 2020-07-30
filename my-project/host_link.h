@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 
 struct host_interface{
     ssize_t (*iface_write_bytes)(uint8_t *, size_t, bool ); //write bytes to the host
@@ -21,3 +22,20 @@ enum iface_setting{
 void host_link_init(enum iface_setting my_interface);
 
 void host_link_parse(void);
+
+enum element_type{
+    SUBINSTRUCTION,
+    INSTRUCTION,
+    LEVEL_TERMINATOR
+};
+
+union next_step{
+    void *function;
+    struct command_tree_element *level;
+};
+
+struct command_tree_element{
+    enum element_type type;
+    char* word;
+    union next_step my_next_step;
+};
