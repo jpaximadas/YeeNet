@@ -1,4 +1,3 @@
-
 #define _GNU_SOURCE
 
 #include "uart.h"
@@ -13,6 +12,10 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/dma.h>
 #include <libopencm3/cm3/nvic.h>
+
+#define GOOD_RDY_BYTE 0x00 //last cobs message was good, ready for next
+#define BAD_RDY_BYTE 0x01 //last cobs message was bad, ready for next
+#define DATA_PACKET_BYTE 0x02 //indicate that the coming bytes will be data
 
 struct cobs_tx_buffer usart1_cobs_tx_buffer = {
 	.buffer_type = TX_BUFFER
@@ -98,14 +101,26 @@ void usart1_terminate(void){
     usart_enable_tx_dma(USART1);
 }
 
- //wrapper function for host_link
+ //wrapper function for external use, will precede all packets with 0x02 DATA
+ bool data_prefix_added = false;
 ssize_t usart1_write_bytes(uint8_t *buf, size_t n, bool terminate_when_done){
+	//seamlessly prefix all incoming data
+	if(!data_prefix_added){
+		uint8_t send_me = DATA_PACKET_BYTE;
+		usart_write(&usart1_cobs_tx_buffer, &send_me, 1);
+		data_prefix_added = true;
+	}
+
 	ssize_t retval = usart_write(&usart1_cobs_tx_buffer, buf, n);
+
+	//terminate the cobs packets if desired
 	if(terminate_when_done){
 		usart1_terminate();
+		data_prefix_added = false;
 	}
 	return retval;
 }
+
 
 static void cobs_buffer_reset(void *cobs_buffer){
 	enum cobs_buffer_type buf_type = *((uint8_t *)cobs_buffer);
@@ -207,10 +222,41 @@ uint8_t uart_read_until(uint32_t usart, uint8_t buf_out[256], int n, char last){
 	
 }
 
-uint8_t err_chars[5] = {'E','R','R','\r','\n'};
+//let internal and external callers release the interface
+//Note: be sure that tx buffer is empty by correctly terminating all packets before calling this function
+void usart1_release(){
+	//reset the rx buffer
+	cobs_buffer_reset(&usart1_cobs_rx_buffer);
+
+	uint8_t send_me = GOOD_RDY_BYTE;
+
+	//prepare for incoming bytes
+	usart_enable_rx_interrupt(USART1);
+
+	//report the interface as ready
+	usart_write(&usart1_cobs_tx_buffer, &send_me, 1);
+	usart1_terminate();
+}
+
+//let internal callers release with an error
+void usart1_release_with_error(){
+	//reset the rx buffer
+	cobs_buffer_reset(&usart1_cobs_rx_buffer);
+
+	uint8_t send_me = BAD_RDY_BYTE;
+
+	//prepare for incoming bytes
+	usart_enable_rx_interrupt(USART1);
+
+	//report the interface as ready
+	usart_write(&usart1_cobs_tx_buffer, &send_me, 1);
+	usart1_terminate();
+}
+
+
 void usart1_isr(void){
 
-	uint8_t c = usart_recv(USART1);
+	volatile uint8_t c = usart_recv(USART1);
 
 	if(c == 0x00){
 		if( usart1_cobs_rx_buffer.next_zero_pos == usart1_cobs_rx_buffer.pos){
@@ -218,16 +264,14 @@ void usart1_isr(void){
 			usart1_cobs_rx_buffer.frame_is_terminated = true;
 			return;
 		} else {
-			usart1_write_bytes(err_chars, 5, true);
-			cobs_buffer_reset(&usart1_cobs_rx_buffer);
+			usart1_release_with_error();
 			return;
 		}
 		
 	}
 
 	if(!(usart1_cobs_rx_buffer.pos<COBS_RX_BUF_SIZE)){
-		usart1_write_bytes(err_chars, 5, true);
-		cobs_buffer_reset(&usart1_cobs_rx_buffer);
+		usart1_release_with_error();
 		return;
 	}
 
@@ -254,20 +298,15 @@ void usart1_isr(void){
 	
 }
 
+
+//This will run even if the iface is unlocked
 uint16_t usart1_get_command(uint8_t **buf_ptr){
 	uint16_t retval;
 	if(usart1_cobs_rx_buffer.frame_is_terminated){
 		*buf_ptr = usart1_cobs_rx_buffer.buf; //set the pointer to the cobs buffer
-		retval = usart1_cobs_rx_buffer.pos; //return the number of bytes available
+		return usart1_cobs_rx_buffer.pos; //return the number of bytes available
 	} else {
 		return 0;
 	}
-	return retval;
 }
 
-uint8_t ready_chars[5] = {'R','D','Y','\r','\n'};
-void usart1_release(void){
-	cobs_buffer_reset(&usart1_cobs_rx_buffer);
-	usart_enable_rx_interrupt(USART1);
-	usart1_write_bytes(ready_chars, 5, true);
-}

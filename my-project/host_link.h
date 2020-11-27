@@ -23,19 +23,18 @@ void host_link_init(enum iface_setting my_interface);
 
 void host_link_parse(void);
 
-enum element_type{
-    SUBINSTRUCTION,
-    INSTRUCTION,
-    LEVEL_TERMINATOR
+enum elem_type{
+    COMMAND_LIST,
+    COMMAND,
 };
 
 union next_step{
-    void *function;
-    struct command_tree_element *level;
+    void (*function)(uint8_t*, uint16_t);
+    struct clist_elem *next_clist;
 };
 
-struct command_tree_element{
-    enum element_type type;
-    char* word;
+
+struct clist_elem{
+    enum elem_type my_type;
     union next_step my_next_step;
 };
