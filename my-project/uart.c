@@ -276,13 +276,14 @@ void usart1_isr(void){
 	}
 
 	if(usart1_cobs_rx_buffer.next_zero_pos == usart1_cobs_rx_buffer.pos){ //at a zero position
-		usart1_cobs_rx_buffer.next_zero_pos += c-1; //update where the next zero position is
-
-		if(!usart1_cobs_rx_buffer.next_zero_is_overhead){ //this zero position is not an overhead byte
+		
+		if(usart1_cobs_rx_buffer.next_zero_is_overhead){ //this zero position is an overhead byte
+			usart1_cobs_rx_buffer.next_zero_pos += c-1; //update where the next zero position is, accounting for the fact that nothing will be written to the buffer
+		}else{//this zero position is not overhead
+			usart1_cobs_rx_buffer.next_zero_pos += c;
 			usart1_cobs_rx_buffer.buf[usart1_cobs_rx_buffer.pos] = 0x00; //fill in the zero
 			usart1_cobs_rx_buffer.pos++; //move to the next character in the buffer
 		}
-		//if this zero position was overhead, the buffer does not move forward and nothing is written
 
 		//determine if the following zero position is overhead
 		if(c == 0xFF){
