@@ -10,36 +10,29 @@
 #include "modem_hl.h"
 #include "sx127x.h"
 #include "util.h"
-
+#include <libopencm3/stm32/gpio.h>
 #include <stdbool.h>
 #include <sys/types.h>
 
-#include <libopencm3/stm32/gpio.h>
+enum lora_mode { SLEEP, STANDBY, RX, TX };
 
-enum lora_mode {
-	SLEEP,
-	STANDBY,
-	RX,
-	TX
-};
-
-extern struct modem * volatile exti0_modem; //must be volatile or will be optimized out
+extern struct modem *volatile exti0_modem;  // must be volatile or will be optimized out
 
 void irq_setup(struct modem *this_modem);
 
 inline static void ss_set(struct modem *this_modem) {
-	gpio_set(this_modem->hw->ss.port,this_modem->hw->ss.pin);
+    gpio_set(this_modem->hw->ss.port, this_modem->hw->ss.pin);
 }
 
 inline static void ss_clear(struct modem *this_modem) {
-	gpio_clear(this_modem->hw->ss.port,this_modem->hw->ss.pin);
+    gpio_clear(this_modem->hw->ss.port, this_modem->hw->ss.pin);
 }
 
 void lora_write_fifo(struct modem *this_modem, uint8_t *buf, uint8_t len, uint8_t offset);
 void lora_read_fifo(struct modem *this_modem, uint8_t *buf, uint8_t len, uint8_t offset);
 
 void lora_config_modulation(struct modem *this_modem, struct modulation_config *modulation);
-bool lora_change_mode(struct modem *this_modem, enum lora_mode change_to,bool check_mode);
+bool lora_change_mode(struct modem *this_modem, enum lora_mode change_to, bool check_mode);
 
 uint8_t lora_read_reg(struct modem *this_modem, uint8_t reg);
 void lora_write_reg(struct modem *this_modem, uint8_t reg, uint8_t val);
@@ -47,5 +40,5 @@ bool lora_write_reg_and_check(struct modem *this_modem, uint8_t reg, uint8_t val
 
 void lora_dbg_print_irq(uint8_t data);
 
-//seed pseudo-random number source
+// seed pseudo-random number source
 void seed_random(struct modem *this_modem);

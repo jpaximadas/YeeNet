@@ -1,24 +1,22 @@
 #define DEBUG
 
-#include "platform/platform.h"
+#include "address.h"
+#include "callback_timer.h"
 #include "modem_hl.h"
+#include "packet.h"
+#include "packet_handler.h"
+#include "platform/platform.h"
 #include "uart.h"
 #include "util.h"
-#include "callback_timer.h"
-#include "address.h"
-#include "packet_handler.h"
-#include "packet.h"
-
-#include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/gpio.h>
+#include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/spi.h>
-#include <libopencm3/stm32/usart.h>
 #include <libopencm3/stm32/timer.h>
-
+#include <libopencm3/stm32/usart.h>
 #include <stdbool.h>
 #include <stdlib.h>
 
-//debug
+// debug
 #include "modem_ll.h"
 #include "sx127x.h"
 
@@ -35,8 +33,8 @@ static struct packet_data outgoing_packet;
 
 bool pkt_avail = false;
 
-void capture_packet(void * param){
-	pkt_avail = true;
+void capture_packet(void *param) {
+    pkt_avail = true;
 }
 
 int main(void) {
@@ -49,101 +47,102 @@ int main(void) {
     // Obtain UART FILE*
     fp_uart = uart_setup(platform_pinout.p_usart);
 
-    fprintf(fp_uart,"start setup...\r\n");
+    fprintf(fp_uart, "start setup...\r\n");
 
-	local_address_setup();
-	fprintf(fp_uart,"Local address: %x\r\n",local_address_get());
+    local_address_setup();
+    fprintf(fp_uart, "Local address: %x\r\n", local_address_get());
 
-	if(local_address_get()!=1 && local_address_get()!=2 && local_address_get()!=3){
-		fprintf(fp_uart,"Address must be 1, 2, or 3. Halting execution");
-		for(;;);
-	}
+    if (local_address_get() != 1 && local_address_get() != 2 && local_address_get() != 3) {
+        fprintf(fp_uart, "Address must be 1, 2, or 3. Halting execution");
+        for (;;)
+            ;
+    }
 
-	outgoing_packet.src = local_address_get();
-	switch(local_address_get()){
-		case 1:
-			outgoing_packet.dest = 2;
-			outgoing_packet.type = DATA_ACKED;
-			break;
-		case 2:
-			outgoing_packet.dest = 1;
-			outgoing_packet.type = DATA_ACKED;
-			break;
-		case 3:
-			outgoing_packet.dest = 0;
-			outgoing_packet.type = DATA_UNACKED;
-			break;
-		default:
-		 	outgoing_packet.dest = 0;
-			 outgoing_packet.type = DATA_UNACKED;
-			 break;
-
-	}
+    outgoing_packet.src = local_address_get();
+    switch (local_address_get()) {
+        case 1:
+            outgoing_packet.dest = 2;
+            outgoing_packet.type = DATA_ACKED;
+            break;
+        case 2:
+            outgoing_packet.dest = 1;
+            outgoing_packet.type = DATA_ACKED;
+            break;
+        case 3:
+            outgoing_packet.dest = 0;
+            outgoing_packet.type = DATA_UNACKED;
+            break;
+        default:
+            outgoing_packet.dest = 0;
+            outgoing_packet.type = DATA_UNACKED;
+            break;
+    }
 
     callback_timer_setup();
 
     // Setup lora0 according to the platform-defined pinout
-	lora0_hw.spi_interface = platform_pinout.p_spi,
-	lora0_hw.rst = platform_pinout.modem_rst,
-	lora0_hw.ss = platform_pinout.modem_ss,
-	lora0_hw.mosi = platform_pinout.modem_mosi,
-	lora0_hw.miso = platform_pinout.modem_miso,
-	lora0_hw.sck = platform_pinout.modem_sck,
-	lora0_hw.irq = platform_pinout.modem_irq,
+    lora0_hw.spi_interface = platform_pinout.p_spi, lora0_hw.rst = platform_pinout.modem_rst,
+    lora0_hw.ss = platform_pinout.modem_ss, lora0_hw.mosi = platform_pinout.modem_mosi,
+    lora0_hw.miso = platform_pinout.modem_miso, lora0_hw.sck = platform_pinout.modem_sck,
+    lora0_hw.irq = platform_pinout.modem_irq,
 
-	modem_setup(&lora0, &lora0_hw); //this needs to occur first
-	handler_setup(&lora0_handler, &lora0, &incoming_packet, &capture_packet, &lora0_handler, PERSISTENT, 4);
+    modem_setup(&lora0, &lora0_hw);  // this needs to occur first
+    handler_setup(&lora0_handler, &lora0, &incoming_packet, &capture_packet, &lora0_handler, PERSISTENT, 4);
 
-	fprintf(fp_uart,"setup complete\r\n");
+    fprintf(fp_uart, "setup complete\r\n");
 
-	uint8_t send_len;
-	for (;;){
-		if (uart_available(platform_pinout.p_usart)) {
+    uint8_t send_len;
+    for (;;) {
+        if (uart_available(platform_pinout.p_usart)) {
+            for (int i = 0; i < MAX_PAYLOAD_LENGTH - PACKET_DATA_OVERHEAD; i++)
+                outgoing_packet.data[i] = 0;
+            send_len = uart_read_until(platform_pinout.p_usart, outgoing_packet.data,
+                                       MAX_PAYLOAD_LENGTH - PACKET_DATA_OVERHEAD, '\r') -
+                       1;
+            outgoing_packet.len = send_len;
 
-			for(int i = 0; i<MAX_PAYLOAD_LENGTH-PACKET_DATA_OVERHEAD;i++) outgoing_packet.data[i] = 0;
-			send_len = uart_read_until(platform_pinout.p_usart, outgoing_packet.data, MAX_PAYLOAD_LENGTH-PACKET_DATA_OVERHEAD, '\r')-1;
-			outgoing_packet.len = send_len;
+            if (lora0_handler.my_state == UNLOCKED &&
+                handler_request_transmit(&lora0_handler, &outgoing_packet)) {
+                fprintf(fp_uart, "packet away\r\n");
+            } else {
+                fprintf(fp_uart, "handler busy, try again\r\n");
+            }
 
-			if(lora0_handler.my_state==UNLOCKED  && handler_request_transmit(&lora0_handler,&outgoing_packet)){
-				fprintf(fp_uart,"packet away\r\n");
-			}else{
-				fprintf(fp_uart,"handler busy, try again\r\n");
-			}
+            while (lora0_handler.my_state == LOCKED) {
+                start_timer(1);
+                // fprintf(fp_uart,"waiting for ack...\r\n");
+                // delay_nops(1000000);
+            }
 
-			while(lora0_handler.my_state == LOCKED){
-				start_timer(1);
-				//fprintf(fp_uart,"waiting for ack...\r\n");
-				//delay_nops(1000000);
-			}
+            fprintf(fp_uart, "Locked->Unlocked: %lu\r\n", stop_timer(1));
 
-			fprintf(fp_uart,"Locked->Unlocked: %lu\r\n",stop_timer(1));
+            if (lora0_handler.last_packet_status == SUCCESS) {
+                fprintf(fp_uart, "received ack; exchange successful!\r\n");
 
-			if(lora0_handler.last_packet_status==SUCCESS){
-				fprintf(fp_uart,"received ack; exchange successful!\r\n");
+            } else {
+                fprintf(fp_uart, "ack never came; exchange failed\r\n");
+            }
+        }
 
-			}else{
-				fprintf(fp_uart,"ack never came; exchange failed\r\n");
-			}
-		}
-
-		if(pkt_avail){
-			fprintf(fp_uart,"got packet | ");
-			fprintf(fp_uart,"source: %x destination: %x \r\n", incoming_packet.src, incoming_packet.dest);
-			fprintf(fp_uart,"length: %x\r\n",incoming_packet.len); //length can make the loop exceed the size of the struct, fix when running for real
-			fprintf(fp_uart,"contents: ");
-			for(int i=0;i<incoming_packet.len;i++){
-				fprintf(fp_uart,"%c", (char ) incoming_packet.data[i]);
-			}
-			fprintf(fp_uart,"\r\n");
-			fprintf(fp_uart,"RSSI: %ld dB\r\n",get_last_payload_rssi(&lora0));
-			double snr = get_last_payload_snr(&lora0);
-			int32_t snr_floored = (int32_t)snr;
-			int32_t snr_decimals = abs((int32_t)((snr - ((double)snr_floored))*100.0));
-			fprintf(fp_uart,"SNR: %ld.%ld dB\r\n",snr_floored,snr_decimals);
-			pkt_avail = false;
-		}
-
-	}
+        if (pkt_avail) {
+            fprintf(fp_uart, "got packet | ");
+            fprintf(fp_uart, "source: %x destination: %x \r\n", incoming_packet.src, incoming_packet.dest);
+            fprintf(fp_uart, "length: %x\r\n",
+                    incoming_packet.len);  // length can make the loop exceed the size of the struct, fix when
+                                           // running for real
+            fprintf(fp_uart, "contents: ");
+            for (int i = 0; i < incoming_packet.len; i++) {
+                fprintf(fp_uart, "%c", (char)incoming_packet.data[i]);
+            }
+            fprintf(fp_uart, "\r\n");
+            fprintf(fp_uart, "RSSI: %ld dB\r\n", get_last_payload_rssi(&lora0));
+            double snr = get_last_payload_snr(&lora0);
+            int32_t snr_floored = (int32_t)snr;
+            int32_t snr_decimals = abs((int32_t)((snr - ((double)snr_floored)) * 100.0));
+            fprintf(fp_uart, "SNR: %ld.%ld dB\r\n", snr_floored, snr_decimals);
+            pkt_avail = false;
+        }
+    }
 }
 #endif
 
