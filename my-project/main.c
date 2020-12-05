@@ -1,5 +1,6 @@
 #define DEBUG
 
+#include "platform/platform.h"
 #include "modem_hl.h"
 #include "uart.h"
 #include "util.h"
@@ -21,83 +22,32 @@
 #include "modem_ll.h"
 #include "sx127x.h"
 
-
-
+// lora0 is the default modem defined in the platform pinout table
+static struct modem_hw lora0_hw;
 static struct modem lora0;
 
-static struct modem_hw dev_breadboard = {
-		
-	.spi_interface = SPI1,
-	
-	.rst_port = GPIOB,
-	.rst_pin = GPIO9,
-	
-	.mosi_port = GPIOA,
-	.mosi_pin = GPIO7,
-	
-	.miso_port = GPIOA,
-	.miso_pin = GPIO6,
-	
-	.sck_port = GPIOA,
-	.sck_pin = GPIO5,
-	
-	.ss_port = GPIOA,
-	.ss_pin = GPIO1,
-	
-	.irq_port = GPIOA,
-	.irq_pin = GPIO0
-	
-};
-
-void clock_setup(void);
-
-void clock_setup(void) {
-	rcc_clock_setup_in_hse_8mhz_out_72mhz();
-
-	/* Enable GPIOA clock. */
-	rcc_periph_clock_enable(RCC_GPIOA);
-	
-	//enable GPIOB clock
-	rcc_periph_clock_enable(RCC_GPIOB);
-	
-	//enable GPIOC clock
-	rcc_periph_clock_enable(RCC_GPIOC);
-
-	rcc_periph_clock_enable(RCC_AFIO);
-
-	/* Enable clocks for USART1. */
-	rcc_periph_clock_enable(RCC_USART1);
-	
-	//enable clock for spi
-	rcc_periph_clock_enable(RCC_SPI1);
-	
-	//enable clock for timer2
-	rcc_periph_clock_enable(RCC_TIM2);
-}
-
-//packet_handler layer tester
-
+// packet_handler layer tester
 #if 1
 
 static struct packet_handler lora0_handler;
-
 static struct packet_data incoming_packet;
-
 static struct packet_data outgoing_packet;
 
 bool pkt_avail = false;
-
-void capture_packet(void *param);
 
 void capture_packet(void * param){
 	pkt_avail = true;
 }
 
-
 int main(void) {
-	
-	clock_setup();
-    fp_uart = uart_setup();
+    // Setup peripherals
+    platform_clocks_init();
+    platform_usart_init();
+    platform_gpio_init();
+    platform_spi_init();
+
+    // Obtain UART FILE*
+    fp_uart = uart_setup(platform_pinout.p_usart);
 
     fprintf(fp_uart,"start setup...\r\n");
 
@@ -129,25 +79,29 @@ int main(void) {
 			 break;
 
 	}
-	
 
     callback_timer_setup();
-	modem_setup(&lora0,&dev_breadboard); //this needs to occur first
 
+    // Setup lora0 according to the platform-defined pinout
+	lora0_hw.spi_interface = platform_pinout.p_spi,
+	lora0_hw.rst = platform_pinout.modem_rst,
+	lora0_hw.ss = platform_pinout.modem_ss,
+	lora0_hw.mosi = platform_pinout.modem_mosi,
+	lora0_hw.miso = platform_pinout.modem_miso,
+	lora0_hw.sck = platform_pinout.modem_sck,
+	lora0_hw.irq = platform_pinout.modem_irq,
+
+	modem_setup(&lora0, &lora0_hw); //this needs to occur first
 	handler_setup(&lora0_handler, &lora0, &incoming_packet, &capture_packet, &lora0_handler, PERSISTENT, 4);
-
-
-	
 
 	fprintf(fp_uart,"setup complete\r\n");
 
 	uint8_t send_len;
+	for (;;){
+		if (uart_available(platform_pinout.p_usart)) {
 
-	for(;;){
-		if(uart_available()){
-			
 			for(int i = 0; i<MAX_PAYLOAD_LENGTH-PACKET_DATA_OVERHEAD;i++) outgoing_packet.data[i] = 0;
-			send_len = uart_read_until(USART1, outgoing_packet.data, MAX_PAYLOAD_LENGTH-PACKET_DATA_OVERHEAD, '\r')-1;
+			send_len = uart_read_until(platform_pinout.p_usart, outgoing_packet.data, MAX_PAYLOAD_LENGTH-PACKET_DATA_OVERHEAD, '\r')-1;
 			outgoing_packet.len = send_len;
 
 			if(lora0_handler.my_state==UNLOCKED  && handler_request_transmit(&lora0_handler,&outgoing_packet)){
@@ -166,7 +120,7 @@ int main(void) {
 
 			if(lora0_handler.last_packet_status==SUCCESS){
 				fprintf(fp_uart,"received ack; exchange successful!\r\n");
-				
+
 			}else{
 				fprintf(fp_uart,"ack never came; exchange failed\r\n");
 			}
@@ -208,13 +162,13 @@ static void my_rx(void * param){
 	if (msg_stat == PAYLOAD_GOOD) {
             fprintf(fp_uart,"got message: %s\r\n", buf);
             fprintf(fp_uart,"length: %u\r\n",recv_len);
-            
+
     } else if(msg_stat == PAYLOAD_BAD) {
             fprintf(fp_uart, "bad packet\r\n");
     } else if(msg_stat == PAYLOAD_EMPTY){
 			fprintf(fp_uart,"empty fifo\r\n");
 	}
-	
+
 	if(msg_stat != PAYLOAD_EMPTY){
 		fprintf(fp_uart,"RSSI: %ld dB\r\n",get_last_payload_rssi(&lora0));
         double snr = get_last_payload_snr(&lora0);
@@ -253,33 +207,33 @@ void hop(void *param){
 }
 
 int main(void) {
-	
+
 	clock_setup();
     fp_uart = uart_setup();
     fprintf(fp_uart,"start setup\r\n");
     callback_timer_setup();
-    
+
     modem_setup(&lora0,&dev_breadboard);
 	modem_attach_callbacks(&lora0,&my_tx,&my_rx,&lora0);
-    
+
 	local_address_setup();
 	fprintf(fp_uart,"Local address: %x\r\n",local_address_get());
-    
+
     fprintf(fp_uart,"finished setup!\r\n");
-    
+
     //hop(&greeting);
-    
+
     modem_listen(&lora0);
-    
-    
+
+
     for(;;){
         //fprintf(fp_uart,"looping\r\n");
-        
+
         if(uart_available()){
-			
+
 			for(int i = 0; i<255;i++) buf[i] = 0;
-			send_len = uart_read_until(USART1, buf, sizeof(buf), '\r')-1;
-			
+			send_len = uart_read_until(platform_usart, buf, sizeof(buf), '\r')-1;
+
 			fprintf(fp_uart,"packet size: %u\r\n", send_len);
 			fprintf(fp_uart,"est. airtime: %lu us\r\n", modem_get_airtime_usec(&lora0,send_len));
 			if(modem_is_clear(&lora0)){
@@ -288,7 +242,7 @@ int main(void) {
 				fprintf(fp_uart,"modem is busy!\r\n");
 			}
 		}
-		
+
 		delay_nops(10000);
     }
 }

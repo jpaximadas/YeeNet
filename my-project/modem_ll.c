@@ -23,12 +23,12 @@
 struct modem * volatile exti0_modem  = NULL;
 
 void exti0_isr(void) {
-	
+
     //TODO figure out how to demote systick priority
     exti_reset_request(EXTI0); //must always be first
     //systick_counter_disable();//stop systick from preempting this irq_seen
 
-     
+
 
 	//fprintf(fp_uart,"got interrupt\r\n");
     exti0_modem->irq_data = lora_read_reg(exti0_modem, LORA_REG_IRQFLAGS);
@@ -37,11 +37,11 @@ void exti0_isr(void) {
     lora_write_reg(exti0_modem, LORA_REG_IRQFLAGS, 0xFF);
 
     exti0_modem->irq_seen = false;
-    
+
     switch(exti0_modem->cur_irq_type){
 		case RX_DONE:
             //start_timer(0);
-     
+
 			(*(exti0_modem->rx_callback))(exti0_modem->callback_arg);
 			break;
 		case TX_DONE:
@@ -54,54 +54,18 @@ void exti0_isr(void) {
 			//#endif
 			break;
 	}
-   
+
    //systick_counter_enable();
-}
-
-void spi_setup(struct modem *this_modem) {
-
-	//fprintf(fp_uart,"spi should be %x, is: %lx",SPI1,this_modem->hw->spi_interface);
-
-	gpio_set_mode(this_modem->hw->ss_port, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, this_modem->hw->ss_pin);
-	gpio_set_mode(this_modem->hw->sck_port, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, this_modem->hw->sck_pin);
-	gpio_set_mode(this_modem->hw->mosi_port, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, this_modem->hw->mosi_pin);
-	gpio_set_mode(this_modem->hw->miso_port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, this_modem->hw->miso_pin);
-	
-	//fprintf(fp_uart,"completed spi gpio config\r\n");
-	
-	spi_reset(this_modem->hw->spi_interface);
-
-	//fprintf(fp_uart,"reset spi\r\n");
-
-	spi_init_master(this_modem->hw->spi_interface, SPI_CR1_BAUDRATE_FPCLK_DIV_128, SPI_CR1_CPOL_CLK_TO_0_WHEN_IDLE,
-			SPI_CR1_CPHA_CLK_TRANSITION_1, SPI_CR1_DFF_8BIT, SPI_CR1_MSBFIRST);
-
-	spi_enable_software_slave_management(this_modem->hw->spi_interface);
-	//fprintf(fp_uart,"software ss enabled\r\n");
-	spi_set_nss_high(this_modem->hw->spi_interface);
-	//fprintf(fp_uart,"nss set high\r\n");
-	
-	ss_set(this_modem);
-	//fprintf(fp_uart,"ss_set\r\n");
-
-	spi_enable(this_modem->hw->spi_interface);
-}
-
-void gpio_setup(struct modem *this_modem) {
-	gpio_set_mode(this_modem->hw->rst_port, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, this_modem->hw->rst_pin);
-	
-	
 }
 
 void irq_setup(struct modem *this_modem){
 	//TODO: implement other pins for irq
 	//assume EXTI0
-	
+
 	nvic_enable_irq(NVIC_EXTI0_IRQ); //interrupt on PA0
     nvic_set_priority(NVIC_EXTI0_IRQ,0);
-	
-	gpio_set_mode(this_modem->hw->irq_port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, this_modem->hw->irq_pin);
-	exti_select_source(EXTI0,this_modem->hw->irq_port);
+
+	exti_select_source(EXTI0,this_modem->hw->irq.port);
 	exti_set_trigger(EXTI0,EXTI_TRIGGER_RISING);
 	exti_enable_request(EXTI0);
 }
@@ -114,7 +78,7 @@ void lora_write_fifo(struct modem *this_modem, uint8_t* buf, uint8_t len, uint8_
     spi_xfer(this_modem->hw->spi_interface,LORA_REG_FIFO_ADDR_PTR | WRITE_MASK);
     spi_xfer(this_modem->hw->spi_interface,offset);
     ss_set(this_modem);
-    
+
     delay_nops(1000);
     //assume compiler is not good enough to emit an sbi instruction for the digital_writes
     // Write data to FIFO.
@@ -176,37 +140,37 @@ bool lora_change_mode(struct modem *this_modem, enum lora_mode change_to,bool ch
         lora_write_reg(this_modem, LORA_REG_OP_MODE, MODE_LORA | mode);
         return true;
     }
-	
+
 }
 
 uint8_t lora_read_reg(struct modem *this_modem, uint8_t reg) {
 	//gpio_set(GPIOC,GPIO13);
    // fprintf(fp_uart,"reading from reg: %x\r\n",reg);
-    
+
     ss_clear(this_modem);
 	//gpio_clear(GPIOC,GPIO13);
-	
+
     spi_xfer(this_modem->hw->spi_interface,reg & 0x7F);
     uint8_t ret = spi_xfer(this_modem->hw->spi_interface,0);
 
     ss_set(this_modem);
-	
-	
+
+
     return ret;
 }
 
 void lora_write_reg(struct modem *this_modem, uint8_t reg, uint8_t val) {
-	
-	
+
+
 	//fprintf(fp_uart,"writing to reg: %x\r\n",reg);
-	
+
 	ss_clear(this_modem);
-	
+
     spi_xfer(this_modem->hw->spi_interface, reg | WRITE_MASK);
     spi_xfer(this_modem->hw->spi_interface, val);
 
     ss_set(this_modem);
-    
+
 }
 
 bool lora_write_reg_and_check(struct modem *this_modem, uint8_t reg, uint8_t val, bool delay) {
@@ -220,7 +184,7 @@ bool lora_write_reg_and_check(struct modem *this_modem, uint8_t reg, uint8_t val
     //read reg
     uint8_t new_val = lora_read_reg(this_modem, reg);
 	//fprintf(fp_uart,"got back: %x\r\n",new_val);
-	
+
     // Return whether write succeeded
     return val == new_val;
 }
@@ -241,7 +205,7 @@ void lora_config_modulation(struct modem *this_modem, struct modulation_config *
     //set preamble length
     uint8_t bot = (uint8_t) modulation->preamble_length;
     uint8_t top = (uint8_t) (modulation->preamble_length >> 8);
-    
+
     lora_write_reg(this_modem,LORA_REG_PREAMBLE_MSB,top);
     lora_write_reg(this_modem,LORA_REG_PREAMBLE_LSB,bot);
 
@@ -269,9 +233,9 @@ void lora_config_modulation(struct modem *this_modem, struct modulation_config *
 	} else {
 		val = val & 0b11110111;
 	}
-	
+
 	lora_write_reg(this_modem,LORA_REG_MODEM_CONFIG_3,val);
-	
+
     //set payload length
     if(modulation->payload_length==0) modulation->payload_length = 1; //prevent 0 from being written to the register
     lora_write_reg(this_modem,LORA_REG_PAYLOAD_LENGTH,modulation->payload_length); //In explicit header mode, this will be overwritten as needed

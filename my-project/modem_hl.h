@@ -1,6 +1,6 @@
 /**
  * modem_hl.h
- * 
+ *
  * Define high-level functions for interacting with SX127x chip.
  * Alternate platforms must implement:
  * - modem_transmit()
@@ -20,28 +20,15 @@
 #include <sys/types.h>
 #include <stdlib.h>
 
-struct modem_hw{
-	
+struct modem_hw {
 	uint32_t spi_interface;
-	
-	uint32_t rst_port;
-	uint32_t rst_pin;
-	
-	uint32_t ss_port;
-	uint32_t ss_pin;
-	
-	uint32_t mosi_port;
-	uint32_t mosi_pin;
-	
-	uint32_t miso_port;
-	uint32_t miso_pin;
-	
-	uint32_t sck_port;
-	uint32_t sck_pin;
-	
-	uint32_t irq_port;
-	uint32_t irq_pin;
-    
+
+    pin_descriptor_t rst;
+    pin_descriptor_t ss;
+    pin_descriptor_t mosi;
+    pin_descriptor_t miso;
+    pin_descriptor_t sck;
+    pin_descriptor_t irq;
 };
 
 enum irq_mode {
@@ -52,21 +39,18 @@ enum irq_mode {
 
 //defines all the data required to work a given modem/MCU platform
 struct modem {
-
     volatile uint8_t irq_data;
     volatile bool irq_seen;
     enum irq_mode cur_irq_type;
-    
+
 	void * callback_arg;
     void (*rx_callback)(void *);
     void (*tx_callback)(void *);
-    
+
     struct modem_hw *hw;
     struct modulation_config *modulation;
 
 	uint32_t extra_time_ms; //expresses time taken by post/preprocessing steps on chip not accounted for by airtime calcs
-
-        
 };
 
 //set up the modem

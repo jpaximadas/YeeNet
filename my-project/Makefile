@@ -12,12 +12,14 @@ CFILES += api.c \
 		  util.c\
 		  callback_timer.c \
 		  address.c \
-		  packet_handler.c
+		  packet_handler.c \
+		  platform/platform.c
+
 AFILES += api-asm.S
 
-# TODO - you will need to edit these two lines!
-DEVICE=stm32f103c86t
 OOCD_FILE = board/common.cfg
+
+include ../yeenet.mk
 
 # You shouldn't have to edit anything below here.
 VPATH += $(SHARED_DIR)
