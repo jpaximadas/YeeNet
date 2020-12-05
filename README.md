@@ -5,6 +5,7 @@
 ```
  $ git clone --recurse-submodules https://github.com/jpaximadas/YeeNet.git
  $ cd YeeNet
+ $ git config core.hooksPath git-hooks # Only necessary if you plan on contributing
  $ export YEENET_BOARD=BLUEPILL_F103
  $ make -C libopencm3
  $ make -C my-project
