@@ -1,6 +1,16 @@
 #pragma once
 #include <sys/types.h>
 
+__attribute__((noreturn)) void assert_fail(void);
+
+#define ASSERT(x)                                                                   \
+    do {                                                                            \
+        if (!(x)) {                                                                 \
+            fprintf(fp_uart, "%s:%d: Assertion failed %s", __FILE__, __LINE__, #x); \
+            assert_fail();                                                          \
+        }                                                                           \
+    } while (0)
+
 inline static void delay_nops(uint32_t nops) {
     for (uint32_t i = 0; i < nops; i++) {
         __asm__("nop");

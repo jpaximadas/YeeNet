@@ -126,12 +126,13 @@ bool lora_change_mode(struct modem *this_modem, enum lora_mode change_to, bool c
             mode = SLEEP;
             break;
     }
-    if (check_mode) {
-        return lora_write_reg_and_check(this_modem, LORA_REG_OP_MODE, MODE_LORA | mode, true);
-    } else {
+
+    if (check_mode)
+        lora_write_reg_and_check(this_modem, LORA_REG_OP_MODE, MODE_LORA | mode, true);
+    else
         lora_write_reg(this_modem, LORA_REG_OP_MODE, MODE_LORA | mode);
-        return true;
-    }
+
+    return true;
 }
 
 uint8_t lora_read_reg(struct modem *this_modem, uint8_t reg) {
@@ -160,7 +161,7 @@ void lora_write_reg(struct modem *this_modem, uint8_t reg, uint8_t val) {
     ss_set(this_modem);
 }
 
-bool lora_write_reg_and_check(struct modem *this_modem, uint8_t reg, uint8_t val, bool delay) {
+void lora_write_reg_and_check(struct modem *this_modem, uint8_t reg, uint8_t val, bool delay) {
     // Write register
     // fprintf(fp_uart,"writing: %x\r\n",val);
     lora_write_reg(this_modem, reg, val);
@@ -173,7 +174,7 @@ bool lora_write_reg_and_check(struct modem *this_modem, uint8_t reg, uint8_t val
     // fprintf(fp_uart,"got back: %x\r\n",new_val);
 
     // Return whether write succeeded
-    return val == new_val;
+    ASSERT(val == new_val);
 }
 
 void lora_config_modulation(struct modem *this_modem, struct modulation_config *modulation) {
