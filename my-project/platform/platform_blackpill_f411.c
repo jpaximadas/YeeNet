@@ -3,7 +3,6 @@
  */
 
 #include "platform/platform.h"
-
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/spi.h>
@@ -64,24 +63,35 @@ void platform_usart_init(void) {
 
 void platform_gpio_init(void) {
     // Setup modem reset pin
-    gpio_mode_setup(platform_pinout.modem_rst.port, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, platform_pinout.modem_rst.pin);
+    gpio_mode_setup(platform_pinout.modem_rst.port, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE,
+                    platform_pinout.modem_rst.pin);
 
     // Setup address pins
-    gpio_mode_setup(platform_pinout.address0.port, GPIO_MODE_INPUT, GPIO_PUPD_NONE, platform_pinout.address0.pin);
-    gpio_mode_setup(platform_pinout.address1.port, GPIO_MODE_INPUT, GPIO_PUPD_NONE, platform_pinout.address1.pin);
+    gpio_mode_setup(platform_pinout.address0.port, GPIO_MODE_INPUT, GPIO_PUPD_NONE,
+                    platform_pinout.address0.pin);
+    gpio_mode_setup(platform_pinout.address1.port, GPIO_MODE_INPUT, GPIO_PUPD_NONE,
+                    platform_pinout.address1.pin);
 }
 
 void platform_spi_init(void) {
-    gpio_mode_setup(platform_pinout.modem_ss.port, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, platform_pinout.modem_ss.pin);
-    gpio_mode_setup(platform_pinout.modem_sck.port, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, platform_pinout.modem_sck.pin);
-    gpio_mode_setup(platform_pinout.modem_mosi.port, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, platform_pinout.modem_mosi.pin);
-    gpio_mode_setup(platform_pinout.modem_miso.port, GPIO_MODE_INPUT, GPIO_PUPD_NONE, platform_pinout.modem_miso.pin);
-    gpio_mode_setup(platform_pinout.modem_irq.port, GPIO_MODE_INPUT, GPIO_PUPD_NONE, platform_pinout.modem_irq.pin);
+    gpio_mode_setup(platform_pinout.modem_ss.port, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE,
+                    platform_pinout.modem_ss.pin);
+    gpio_mode_setup(platform_pinout.modem_sck.port, GPIO_MODE_AF, GPIO_PUPD_NONE,
+                    platform_pinout.modem_sck.pin);
+    gpio_set_af(platform_pinout.modem_sck.port, GPIO_AF5, platform_pinout.modem_sck.pin);
+    gpio_mode_setup(platform_pinout.modem_mosi.port, GPIO_MODE_AF, GPIO_PUPD_NONE,
+                    platform_pinout.modem_mosi.pin);
+    gpio_set_af(platform_pinout.modem_mosi.port, GPIO_AF5, platform_pinout.modem_mosi.pin);
+    gpio_mode_setup(platform_pinout.modem_miso.port, GPIO_MODE_AF, GPIO_PUPD_NONE,
+                    platform_pinout.modem_miso.pin);
+    gpio_set_af(platform_pinout.modem_miso.port, GPIO_AF5, platform_pinout.modem_miso.pin);
+    gpio_mode_setup(platform_pinout.modem_irq.port, GPIO_MODE_INPUT, GPIO_PUPD_NONE,
+                    platform_pinout.modem_irq.pin);
 
     spi_reset(platform_pinout.p_spi);
 
     spi_init_master(platform_pinout.p_spi, SPI_CR1_BAUDRATE_FPCLK_DIV_128, SPI_CR1_CPOL_CLK_TO_0_WHEN_IDLE,
-            SPI_CR1_CPHA_CLK_TRANSITION_1, SPI_CR1_DFF_8BIT, SPI_CR1_MSBFIRST);
+                    SPI_CR1_CPHA_CLK_TRANSITION_1, SPI_CR1_DFF_8BIT, SPI_CR1_MSBFIRST);
 
     spi_enable_software_slave_management(platform_pinout.p_spi);
     spi_set_nss_high(platform_pinout.p_spi);
