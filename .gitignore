@@ -3,3 +3,4 @@ bin/
 *.bin
 generated.*.ld
 .vscode/*
+.*.swp

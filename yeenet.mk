@@ -1,0 +1,11 @@
+# Board-specific includes
+
+ifeq ($(YEENET_BOARD),BLUEPILL_F103)
+	DEVICE=stm32f103c86t
+	TGT_CFLAGS += -DYEENET_BOARD_BLUEPILL_F103
+else ifeq ($(YEENET_BOARD),BLACKPILL_F411)
+	DEVICE=stm32f411re
+	TGT_CFLAGS += -DYEENET_BOARD_BLACKPILL_F411
+else
+$(error Unsupported board! YEENET_BOARD must be set to one of: BLUEPILL_F103, BLACKPILL_F411)
+endif

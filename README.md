@@ -5,12 +5,17 @@
 ```
  $ git clone --recurse-submodules https://github.com/jpaximadas/YeeNet.git
  $ cd YeeNet
+ $ git config core.hooksPath git-hooks # Only necessary if you plan on contributing
+ $ export YEENET_BOARD=BLUEPILL_F103
  $ make -C libopencm3
  $ make -C my-project
 ```
 
 If you have an older git, or got ahead of yourself and skipped the ```--recurse-submodules```
 you can fix things by running ```git submodule update --init``` (This is only needed once)
+
+If you are targeting development board other than the STM32 "Blue Pill", change YEENET_BOARD accordingly.
+For a list of supported boards, see [Supported Boards](#supported-boards)
 
 Subsequent changes to the source files only require ```make -C my-project```
 
@@ -62,30 +67,42 @@ Example:
 * my-project contains the program
 * my-common-code contains shared files from libopencm3
 
+# Supported boards
+YeeNet aims to target readily available and low-cost STM32 development boards. See below for a table of supported targets and their corresponding YEENET_BOARD value.
+
+| Board                | YEENET_BOARD   |
+| -------------------  | -------------  |
+| Blue Pill STM32F103  | BLUEPILL_F103  |
+| Black Pill STM32F411 | BLACKPILL_F411 |
+
+
+Support for other boards can be added by creating an appropriate platform definition in `platform/` and updating `yeenet.mk` accordingly.
+
 # Breadboard setup
 
-Development for this project currently uses a bluepill dev board. The following table shows how the pins are connected to the SX127x and USB to UART. Please read the warnings at the end of the section before attempting to the breadboard this.
+The following table shows how the pins on supported development boards should be connected to the SX127x and USB to UART.
+Please read the warnings at the end of the section before attempting to the breadboard this.
 
-| Function | Bluepill Pin |
-|---|---|
-| Serial TX | PA9 |
-| Serial RX | PA10 |
-| IRQ | PA0 |
-| MOSI | PA7 |
-| MISO | PA6 |
-| SCK | PA5 |
-| CS/SS | A1 |
-| RST | B9 |
-| Address Bit 0 | B10 |
-| Address Bit 1 | B11 |
+| Function      | Blue Pill/Black Pill Pin |
+| ------------- | ---------------------- |
+| Serial TX     | PA9                    |
+| Serial RX     | PA10                   |
+| IRQ           | PA0                    |
+| MOSI          | PA7                    |
+| MISO          | PA6                    |
+| SCK           | PA5                    |
+| CS/SS         | A1                     |
+| RST           | B9                     |
+| Address Bit 0 | B10                    |
+| Address Bit 1 | B11                    |
 
 * Serial TX/RX should connect to a USB/UART chip.
 * IRQ should connect to DIO0 on the SX127x. (May be called D0 or G0 on a breakout board)
-* MOSI,MISO,SCK, and SS should connect from the bluepill to the appropriate pins on the SX127x breakout.
-* RST should connect from the bluepill to the appropriate pin on the SX1276x breakout.
-* Address bits 0 and 1 should run from the bluepill to 3.3v or ground.
+* MOSI,MISO,SCK, and SS should connect from the dev board to the appropriate pins on the SX127x breakout.
+* RST should connect from the dev board to the appropriate pin on the SX1276x breakout.
+* Address bits 0 and 1 should run from the dev board to 3.3v or ground.
 
-> :warning: **Do not power the bluepill from more than one voltage source.** This will damage the regulator on the PCB.
+> :warning: **Do not power the board from more than one voltage source.** This will damage the regulator on the PCB.
 
 > :warning: **Power the SX127x or SX127x dev board with 3.3 volts ONLY.** The layout of the pins above routes signals from the SX127x into pins of the bluepill that are NOT 5 volt tolerant. The Adafruit SX127x breakout will emit 5 volt logic signals and damage the bluepill if powered from 5 volts.
 

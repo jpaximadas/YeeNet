@@ -1,0 +1,64 @@
+#!/bin/bash
+#
+# Simple hook to enforce clang-formatted code
+# Based off of git's pre-commit.sample hook
+#
+# Written by Shawn Anastasio
+
+if git rev-parse --verify HEAD >/dev/null 2>&1
+then
+	against=HEAD
+else
+	# Initial commit: diff against an empty tree object
+	against=$(git hash-object -t tree /dev/null)
+fi
+
+# Whether to allow non-formatted code or not
+allowunformattedcode=$(git config --type bool hooks.allowunformattedcode)
+
+# Whether to automatically format code or not
+autoformatcode=$(git config --type bool hooks.autoformatcode)
+
+# Redirect output to stderr.
+exec 1>&2
+
+# ANSI color codes for pretty printing
+C_RED='\033[0;31m'
+C_RESET='\033[0m'
+
+found_error=0
+if [ "${allowunformattedcode}" != "true" ]; then
+    which clang-format >/dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "clang-format not found in PATH! Install clang-format or disable check with 'git config hooks.allowunformattedcode true'"
+        exit 1
+    fi
+
+    while IFS= read -r -d $'\0' FILE; do
+        # Check .c and .h files for formatting
+        if [[ "${FILE}" =~ \.(c|h)$ ]]; then
+            clang-format "${FILE}" > .tmp_clang_formatted_file
+            diff -u "${FILE}" .tmp_clang_formatted_file
+
+            # If diff returned non-zero, there is a formatting error in the file
+            if [ $? -ne 0 ]; then
+                echo -e "${C_RED}ERROR:${C_RESET} Incorrectly formatted file: ${FILE}!\n"
+
+                if [ "${autoformatcode}" = "true" ]; then
+                    echo "Automatically formatting..."
+                    mv .tmp_clang_formatted_file "${FILE}"
+                    git add "${FILE}"
+                else
+                    found_error=1
+                fi
+            fi
+            rm -f .tmp_clang_formatted_file
+        fi
+    done < <(git diff --cached --name-only -z $against)
+fi
+
+if [ $found_error -eq 1 ]; then
+    echo -e "${C_RED}ERROR:${C_RESET} Can't continue! If you want to automatically format files, run 'git config hooks.autoformatcode true'"
+fi
+
+exit $found_error

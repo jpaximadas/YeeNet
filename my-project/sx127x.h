@@ -1,4 +1,5 @@
-#define MAX_PAYLOAD_LENGTH 255 //somewhere in the modem implementation, this must be defined for higher layers to work
+#define MAX_PAYLOAD_LENGTH \
+    255  // somewhere in the modem implementation, this must be defined for higher layers to work
 
 #define WRITE_MASK 0x80
 
@@ -8,11 +9,11 @@
 #define MODE_LORA 0x80
 #define MODE_SLEEP 0x0
 #define MODE_STDBY 0x1
-#define MODE_FSTX  0x2
-#define MODE_TX    0x3
-#define MODE_FSRX  0x4
+#define MODE_FSTX 0x2
+#define MODE_TX 0x3
+#define MODE_FSRX 0x4
 #define MODE_RXCON 0x5
-#define MODE_CAD   0x7
+#define MODE_CAD 0x7
 
 #define LORA_REG_FR_MSB 0x6
 #define LORA_REG_FR_MID 0x7
@@ -47,9 +48,9 @@
 #define LORA_REG_MODEM_CONFIG_1 0x1D
 #define LORA_REG_MODEM_CONFIG_2 0x1E
 #define LORA_REG_MODEM_CONFIG_3 0x26
-#define LORA_REG_SYMB_TIMEOUT   0x1F
-#define LORA_REG_PREAMBLE_MSB   0x20
-#define LORA_REG_PREAMBLE_LSB   0x21
+#define LORA_REG_SYMB_TIMEOUT 0x1F
+#define LORA_REG_PREAMBLE_MSB 0x20
+#define LORA_REG_PREAMBLE_LSB 0x21
 #define LORA_REG_PAYLOAD_LENGTH 0x22
 #define LORA_REG_MAX_PAYLOAD_LENGTH 0x23
 #define LORA_REG_HOP_PERIOD 0x24
@@ -61,7 +62,6 @@
 #define LORA_REG_DETECT_OPTIMIZE 0x31
 
 #define LORA_REG_DETECTION_THRESHOLD 0x37
-
 
 #define REG_DIO_MAPPING_1 0x40
 #define REG_DIO_MAPPING_2 0x41

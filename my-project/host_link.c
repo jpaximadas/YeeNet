@@ -12,7 +12,7 @@ void host_link_init(enum iface_setting my_interface){
         }
         case USART:
         {
-            link.fp = usart1_setup(115200);
+            usart1_host_link_init();
             link.iface_get_command = &usart1_get_command;
             link.iface_write_bytes = &usart1_write_bytes;
             link.iface_release = &usart1_release;
