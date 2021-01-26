@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <sys/types.h>
 
-enum cobs_decode_result cobs_decode_buf_push_char(struct cobs_decode_buf *decode_buf, char c){
+enum cobs_decode_result cobs_decode_buf_push_char(struct cobs_decode_buf *decode_buf, uint8_t c){
 
     if(decode_buf->frame_is_terminated){
         return TERMINATED;
@@ -47,7 +47,7 @@ enum cobs_decode_result cobs_decode_buf_push_char(struct cobs_decode_buf *decode
     return OK;
 }
 
-ssize_t cobs_encode_buf_push(struct cobs_encode_buf *encode_buf, char *buf, size_t n){
+ssize_t cobs_encode_buf_push(struct cobs_encode_buf *encode_buf, uint8_t *buf, size_t n){
 
     if( encode_buf->frame_is_terminated ) return 0;
 
@@ -59,7 +59,7 @@ ssize_t cobs_encode_buf_push(struct cobs_encode_buf *encode_buf, char *buf, size
 			//overhead byte not needed
 			if(buf[i] != COBS_DELIMETER){
 				//next byte in input buffer is not zero
-				encode_buf->buf[encode_buf->pos] = encode_buf[i]; //write it
+				encode_buf->buf[encode_buf->pos] = buf[i]; //write it
 				//move to next character in the input buffer
 			}else{
 				//next byte in intput buffer is zero
@@ -83,10 +83,11 @@ ssize_t cobs_encode_buf_push(struct cobs_encode_buf *encode_buf, char *buf, size
 
 void cobs_encode_buf_terminate(struct cobs_encode_buf *encode_buf){
     encode_buf->buf[encode_buf->pos] = COBS_DELIMETER;
+	encode_buf->buf[encode_buf->last_zero_pos]  = encode_buf->pos - encode_buf->last_zero_pos;
     encode_buf->frame_is_terminated = true;
 }
 
-static void cobs_buffer_reset(void *cobs_buffer) {
+void cobs_buf_reset(void *cobs_buffer) {
 	enum cobs_buf_type buf_type = *( (uint8_t *) cobs_buffer);
 
 	switch(buf_type){

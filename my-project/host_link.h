@@ -6,10 +6,9 @@
 #include <string.h>
 
 struct host_interface{
-    ssize_t (*iface_write_bytes)(uint8_t *, size_t, bool ); //write bytes to the host
+    ssize_t (*iface_write_bytes)(uint8_t *, size_t); //write bytes to the host
     uint16_t (*iface_get_command)(uint8_t **); //read a command
     void (*iface_release)(void); //release the interface
-    FILE* fp; //TX only file pointer for convenience
 };
 
 extern struct host_interface link;

@@ -20,9 +20,7 @@ struct modem *volatile exti0_modem = NULL;
 void exti0_isr(void) {
     // TODO figure out how to demote systick priority
     exti_reset_request(EXTI0);  // must always be first
-    // systick_counter_disable();//stop systick from preempting this irq_seen
 
-    // fprintf(fp_uart,"got interrupt\r\n");
     exti0_modem->irq_data = lora_read_reg(exti0_modem, LORA_REG_IRQFLAGS);
 
     //irq flag register must be reset twice. Is this hardware errata?
@@ -33,18 +31,12 @@ void exti0_isr(void) {
 
     switch (exti0_modem->cur_irq_type) {
         case RX_DONE:
-            // start_timer(0);
-
             (*(exti0_modem->rx_callback))(exti0_modem->callback_arg);
             break;
         case TX_DONE:
-            // fprintf(fp_uart,"RX to TX time: %li\r\n",stop_timer(0));
             (*(exti0_modem->tx_callback))(exti0_modem->callback_arg);
             break;
         case INVALID:
-            //#ifdef DEBUG
-            fprintf(fp_uart, "spurious interrupt detected\r\n");
-            //#endif
             break;
     }
 
@@ -129,8 +121,8 @@ uint8_t lora_read_reg(struct modem *this_modem, uint8_t reg) {
     ss_clear(this_modem);
     // gpio_clear(GPIOC,GPIO13);
 
-    spi_xfer(this_modem->hw->spi_interface, reg & 0x7F);
-    uint8_t ret = spi_xfer(this_modem->hw->spi_interface, 0);
+    spi_xfer(this_modem->spi_interface, reg & 0x7F);
+    uint8_t ret = spi_xfer(this_modem->spi_interface, 0);
 
     ss_set(this_modem);
 
@@ -161,7 +153,7 @@ void lora_write_reg_and_check(struct modem *this_modem, uint8_t reg, uint8_t val
     // fprintf(fp_uart,"got back: %x\r\n",new_val);
 
     // Return whether write succeeded
-    ASSERT(val == new_val);
+    //ASSERT(val == new_val);
 }
 
 void lora_config_modulation(struct modem *this_modem, struct modulation_config *modulation) {

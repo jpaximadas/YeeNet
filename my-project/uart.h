@@ -3,11 +3,9 @@
 #include <stdio.h>
 
 
-FILE *usart1_setup(uint32_t baud);
-//enabled using the file pointer
-void usart1_terminate(void);
+void usart1_host_link_init();
 
-ssize_t usart1_write_bytes(uint8_t *buf, size_t n, bool terminate_when_done);
+ssize_t usart1_write_bytes(uint8_t *buf, size_t n);
 
 uint16_t usart1_get_command(uint8_t **buf_ptr);
 

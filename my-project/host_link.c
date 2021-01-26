@@ -1,8 +1,12 @@
 #include "host_link.h"
 #include "uart.h"
 #include <string.h>
+#include <libopencm3/cm3/scb.h>
 
 struct host_interface link;
+
+uint8_t rdy_good = 0x00;
+uint8_t rdy_bad = 0x01;
 
 void host_link_init(enum iface_setting my_interface){
     switch(my_interface){
@@ -19,28 +23,54 @@ void host_link_init(enum iface_setting my_interface){
             break;
         }
     }
+    link.iface_write_bytes(&rdy_good,1);
+    link.iface_release();
 }
 
 void host_link_echo(uint8_t *command, uint16_t len);
 
 void host_link_echo(uint8_t *command, uint16_t len){
-    (*link.iface_write_bytes)(command,len,true);
+    link.iface_write_bytes(&rdy_good,1);
+    link.iface_write_bytes(command,len);
+}
+
+void host_link_reset(uint8_t *command, uint16_t len);
+
+void host_link_reset(uint8_t *command, uint16_t len){
+    scb_reset_system();
+}
+
+void host_link_modem_up(uint8_t *command, uint16_t len){
+    
 }
 
 struct clist_elem clist_top_level[] = {
     {
-        .my_type = (enum elem_type) 1 //number of commands in the clist
+        .my_type = (enum elem_type) 3 //number of commands in the clist
     },
     {
         .my_type = COMMAND,
         .my_next_step = &host_link_echo
+    },
+    {
+        .my_type = COMMAND,
+        .my_next_step = &host_link_reset
+    },
+    {
+        .my_type = COMMAND_LIST,
+        .my_next_step = modem_commands
     }
 };
+
+struct clist_elem modem_commands[] = {
+    {
+
+    }
+}
 
 //TODO make sure same command doesn't get run twice?
 uint8_t *cur_command;
 void host_link_parse(void){
-
 
     //start at top level command list
     struct clist_elem *cur_clist = clist_top_level;
@@ -50,8 +80,7 @@ void host_link_parse(void){
     if(!len){
         return;
     }
-
-
+    
     //loop over the command
     for(;;){
     

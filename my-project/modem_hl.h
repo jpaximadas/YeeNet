@@ -42,7 +42,10 @@ struct modem {
 };
 
 // set up the modem
-bool modem_setup(struct modem *this_modem, struct modem_hw *hw);
+bool modem_setup(struct modem *this_modem,
+                 uint32_t spi_interface,
+                 pin_descriptor_t ss,
+                 pin_descriptor_t rst);
 
 // atach callbacks
 void modem_attach_callbacks(struct modem *this_modem,

@@ -7,6 +7,7 @@ CFILES = main.c
 CFILES += api.c \
 		  modem_hl.c \
 		  modem_ll.c \
+		  otf_cobs.c \
 		  uart.c \
 		  modem_ll_config.c \
 		  util.c\
@@ -14,7 +15,6 @@ CFILES += api.c \
 		  address.c \
 		  packet_handler.c \
 		  host_link.c \
-		  otf_cobs.c \
 		  platform/platform.c
 
 AFILES += api-asm.S

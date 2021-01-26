@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <sys/types.h>
+#pragma once
 
 #define COBS_DELIMETER 0x00
 #define COBS_TX_BUF_SIZE 300
@@ -32,7 +33,7 @@ enum cobs_decode_result{
     ENCODING_ERROR
 };
 
-enum cobs_decode_result cobs_decode_buf_push_char(struct cobs_decode_buf *decode_buf, char c);
+enum cobs_decode_result cobs_decode_buf_push_char(struct cobs_decode_buf *decode_buf, uint8_t c);
 
 /* ENCODING */
 
@@ -44,6 +45,6 @@ struct cobs_encode_buf{
     bool frame_is_terminated;
 };
 
-ssize_t cobs_encode_buf_push(struct cobs_encode_buf *encode_buf, char *buf, size_t n);
+ssize_t cobs_encode_buf_push(struct cobs_encode_buf *encode_buf, uint8_t *buf, size_t n);
 
 void cobs_encode_buf_terminate(struct cobs_encode_buf *encode_buf);

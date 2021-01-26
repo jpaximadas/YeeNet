@@ -35,7 +35,6 @@ bool modem_setup(struct modem *this_modem,
     this_modem->rst = rst;
     this_modem->spi_interface = spi_interface;
     this_modem->ss = ss;
-    this_modem->hw = hw;
 
     // set rx/tx done isr to dummy functions
     this_modem->rx_callback = &dummy_callback;
