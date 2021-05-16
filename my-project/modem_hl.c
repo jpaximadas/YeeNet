@@ -279,18 +279,18 @@ bool modem_is_clear(struct modem *this_modem) {
     return true;
 }
 
-int32_t get_last_payload_rssi(struct modem *this_modem) {
+int32_t modem_get_last_payload_rssi(struct modem *this_modem) {
     int32_t reg = lora_read_reg(this_modem, LORA_REG_PKT_RSSI_VALUE);
     return -157 + reg;  // assume use of HF port see page 112 of lora manual
 }
 
-double get_last_payload_snr(struct modem *this_modem) {
+float modem_get_last_payload_snr(struct modem *this_modem) {
     int32_t reg = lora_read_reg(this_modem, LORA_REG_PKT_SNR_VALUE);
-    double snr = ((double)reg) / 4.0;
+    float snr = ((float)reg) / 4.0;
     if (reg >= 0) {
         return snr;
     } else {
-        return ((double)get_last_payload_rssi(this_modem)) + snr;
+        return ((float)modem_get_last_payload_rssi(this_modem)) + snr;
     }
 }
 

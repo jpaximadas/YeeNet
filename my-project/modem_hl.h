@@ -82,8 +82,8 @@ uint32_t modem_get_airtime_usec(struct modem *this_modem, uint8_t payload_length
 
 bool modem_is_clear(struct modem *this_modem);
 
-int32_t get_last_payload_rssi(struct modem *this_modem);
+int32_t modem_get_last_payload_rssi(struct modem *this_modem);
 
-double get_last_payload_snr(struct modem *this_modem);
+float modem_get_last_payload_snr(struct modem *this_modem);
 
 bool payload_length_is_fixed(struct modem *this_modem);

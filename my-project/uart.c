@@ -13,6 +13,7 @@ struct cobs_decode_buf usart1_cobs_rx_buffer = {
 	.buftype = DECODE_BUF
 };
 
+uint8_t rdy_encoding_error = 0x01;
 uint16_t tx_buf_pos;
 void usart1_isr(void){
 	uint32_t serviced_irqs = 0;
@@ -28,10 +29,11 @@ void usart1_isr(void){
 				usart_disable_rx_interrupt(platform_pinout.p_usart);
 				break;
 			case OVERFLOW:
-				//send an error
-				break;
 			case ENCODING_ERROR:
-				//send an error
+				cobs_buf_reset(&usart1_cobs_tx_buffer); //may be unnecessary
+				cobs_encode_buf_push(&usart1_cobs_tx_buffer,&rdy_encoding_error,1);
+				cobs_encode_buf_terminate(&usart1_cobs_tx_buffer);
+				usart1_release();
 				break;
 		}
      }
