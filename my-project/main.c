@@ -14,6 +14,11 @@ int main(void) {
 
 	packet_buf_init(&packet_buffer,records);
     host_link_init(USART);
+
+    platform_set_indicator(true);
+    delay_nops(1000000);
+    platform_set_indicator(false);
+
 	for(;;){
 		host_link_parse();
 	}

@@ -31,6 +31,9 @@ struct platform_pinout_table {
     // Address pins
     pin_descriptor_t address0;
     pin_descriptor_t address1;
+
+    // Indicator pin
+    pin_descriptor_t indicator;
 };
 
 extern const struct platform_pinout_table platform_pinout;
@@ -44,3 +47,4 @@ void platform_usart_init(void);
 void platform_gpio_init(void);
 void platform_spi_init(void);
 void platform_irq_init(void);
+void platform_set_indicator(bool state);

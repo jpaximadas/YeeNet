@@ -2,6 +2,7 @@
 #include "modem_ll.h"
 #include "modem_ll_config.h"
 #include "sx127x.h"
+#include "platform/platform.c"
 #include "uart.h"  //debug
 #include "util.h"  //debug
 #include <libopencm3/cm3/nvic.h>
@@ -34,6 +35,7 @@ void exti0_isr(void) {
             (*(exti0_modem->rx_callback))(exti0_modem->callback_arg);
             break;
         case TX_DONE:
+            platform_set_indicator(false);
             (*(exti0_modem->tx_callback))(exti0_modem->callback_arg);
             break;
         case INVALID:
@@ -100,6 +102,7 @@ void lora_change_mode(struct modem *this_modem, enum lora_mode change_to) {
             lora_write_reg(this_modem, REG_DIO_MAPPING_1, 0x40 /* TXDONE */);
             this_modem->cur_irq_type = TX_DONE;
             mode = MODE_TX;
+            platform_set_indicator(true);
             break;
         default:
             mode = SLEEP;

@@ -26,6 +26,9 @@ const struct platform_pinout_table platform_pinout = {
     // Address pins
     .address0 = {GPIOB, GPIO10},
     .address1 = {GPIOB, GPIO11},
+
+    // Indicator pin
+    .indicator ={GPIOC, GPIO13}
 };
 
 void platform_clocks_init(void) {
@@ -75,6 +78,9 @@ void platform_gpio_init(void) {
     // Setup address pins
 	gpio_set_mode(platform_pinout.address0.port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, platform_pinout.address0.pin);
 	gpio_set_mode(platform_pinout.address1.port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, platform_pinout.address1.pin);
+
+    // Setup indicator pin
+    gpio_set_mode(platform_pinout.indicator.port, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_PUSHPULL, platform_pinout.indicator.pin);
 }
 
 void platform_spi_init(void) {
@@ -105,4 +111,12 @@ void platform_irq_init(void) {
     exti_select_source(EXTI0, platform_pinout.modem_irq.port);
     exti_set_trigger(EXTI0, EXTI_TRIGGER_RISING);
     exti_enable_request(EXTI0);
+}
+
+void platform_set_indicator(bool state){
+    if(state){
+        gpio_clear(platform_pinout.indicator.port,platform_pinout.indicator.pin);
+    }else{
+        gpio_set(platform_pinout.indicator.port,platform_pinout.indicator.pin);
+    }
 }

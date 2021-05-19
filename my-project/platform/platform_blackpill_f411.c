@@ -98,3 +98,8 @@ void platform_spi_init(void) {
 
     spi_enable(platform_pinout.p_spi);
 }
+
+// TODO: write something here to blink the blackpill LED
+void platform_set_indicator(bool state){
+    return;
+}
