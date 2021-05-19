@@ -11,7 +11,7 @@ void host_link_modem_listen(uint8_t *command, uint16_t len);
 
 void host_link_modem_load_payload(uint8_t *command, uint16_t len);
 
-void host_link_modem_load_and_transmit(uint8_t *command, uint16_t len);
+void host_link_modem_load_and_transmit(volatile uint8_t *command, volatile uint16_t len);
 
 void host_link_modem_transmit(uint8_t *command, uint16_t len);
 

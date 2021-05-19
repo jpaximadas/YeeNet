@@ -59,7 +59,7 @@ struct modulation_config short_range_modulation = {.spreading_factor = SF6,
 struct modulation_config default_modulation = {.spreading_factor = SF7,
                                                .bandwidth = bandwidth_500000,
                                                .coding_rate = CR4_8,
-                                               .header_enabled = false,  // enable header
+                                               .header_enabled = true,  // enable header
                                                .crc_enabled = true,      // enable crc
                                                .preamble_length = 8,
                                                .payload_length = 255};

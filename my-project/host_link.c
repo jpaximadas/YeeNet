@@ -64,7 +64,7 @@ void (*commands[])(uint8_t *,uint16_t len) = {
 };
 
 uint8_t *cur_command;
-
+volatile bool trip;
 void host_link_parse(void){
     //update command pointer
     uint16_t len = (uint16_t) (*link.iface_get_command)(&cur_command);
@@ -86,6 +86,7 @@ void host_link_parse(void){
     //move the command pointer forward
     cur_command++;
     len--;
+    trip = !trip;
     command(cur_command,len);
     //release the interface once the command is done
     link.iface_release();
