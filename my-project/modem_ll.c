@@ -2,7 +2,7 @@
 #include "modem_ll.h"
 #include "modem_ll_config.h"
 #include "sx127x.h"
-#include "platform/platform.c"
+#include "platform/platform.h"
 #include "uart.h"  //debug
 #include "util.h"  //debug
 #include <libopencm3/cm3/nvic.h>
