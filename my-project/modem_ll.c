@@ -80,7 +80,7 @@ void lora_read_fifo(struct modem *this_modem, uint8_t *buf, uint8_t len, uint8_t
     ss_set(this_modem);
 }
 
-bool lora_change_mode(struct modem *this_modem, enum lora_mode change_to, bool check_mode) {
+void lora_change_mode(struct modem *this_modem, enum lora_mode change_to) {
     uint8_t mode;
     switch (change_to) {
         case SLEEP:
@@ -105,13 +105,8 @@ bool lora_change_mode(struct modem *this_modem, enum lora_mode change_to, bool c
             mode = SLEEP;
             break;
     }
-
-    if (check_mode)
-        lora_write_reg_and_check(this_modem, LORA_REG_OP_MODE, MODE_LORA | mode, true);
-    else
-        lora_write_reg(this_modem, LORA_REG_OP_MODE, MODE_LORA | mode);
-
-    return true;
+    lora_write_reg(this_modem, LORA_REG_OP_MODE, MODE_LORA | mode);
+    return;
 }
 
 uint8_t lora_read_reg(struct modem *this_modem, uint8_t reg) {

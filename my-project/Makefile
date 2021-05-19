@@ -15,7 +15,10 @@ CFILES += api.c \
 		  address.c \
 		  packet_handler.c \
 		  host_link.c \
-		  platform/platform.c
+		  platform/platform.c \
+		  packet_buffer.c \
+		  host_link_buffer.c \
+		  host_link_modem.c 
 
 AFILES += api-asm.S
 

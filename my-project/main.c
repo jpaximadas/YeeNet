@@ -10,6 +10,7 @@ int main(void) {
 	
 	platform_clocks_init();
     platform_gpio_init();
+    platform_spi_init();
 
 	packet_buf_init(&packet_buffer,records);
     host_link_init(USART);

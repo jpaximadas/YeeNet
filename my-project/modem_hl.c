@@ -122,7 +122,7 @@ void modem_attach_callbacks(struct modem *this_modem,
 // this function will put the lora into a standby mode
 void modem_load_payload(struct modem *this_modem, uint8_t msg[MAX_PAYLOAD_LENGTH], uint8_t length) {
 
-    lora_change_mode(this_modem, STANDBY, false);
+    lora_change_mode(this_modem, STANDBY);
 
     if (this_modem->modulation->header_enabled) {                     // explicit header mode
         lora_write_reg(this_modem, LORA_REG_PAYLOAD_LENGTH, length);  // inform lora of payload length
@@ -139,7 +139,7 @@ void modem_load_payload(struct modem *this_modem, uint8_t msg[MAX_PAYLOAD_LENGTH
 
 void modem_transmit(struct modem *this_modem) {
     this_modem->irq_seen = true;
-    lora_change_mode(this_modem, TX, false);
+    lora_change_mode(this_modem, TX);
 }
 
 void modem_load_and_transmit(struct modem *this_modem, uint8_t msg[MAX_PAYLOAD_LENGTH], uint8_t length) {
@@ -147,9 +147,13 @@ void modem_load_and_transmit(struct modem *this_modem, uint8_t msg[MAX_PAYLOAD_L
     modem_transmit(this_modem);
 }
 
-bool modem_listen(struct modem *this_modem) {
+void modem_listen(struct modem *this_modem) {
     this_modem->irq_seen = true;  // reset irq flag
-    return lora_change_mode(this_modem, RX, false);
+    lora_change_mode(this_modem, RX);
+}
+
+void modem_standby(struct modem *this_modem){
+    lora_change_mode(this_modem,STANDBY);
 }
 
 // this function will put the lora into a standby mode
@@ -160,7 +164,7 @@ enum payload_status modem_get_payload(struct modem *this_modem,
     if (this_modem->irq_seen || (this_modem->cur_irq_type != RX_DONE)) {
         return PAYLOAD_EMPTY;
     }
-    lora_change_mode(this_modem, STANDBY, false);  // put the lora into standby mode for reg read
+    lora_change_mode(this_modem, STANDBY);  // put the lora into standby mode for reg read
     enum payload_status retval = PAYLOAD_GOOD;
 
     if (!(data & LORA_MASK_IRQFLAGS_RXDONE)) {
@@ -194,6 +198,7 @@ double ceil(double num) {
     // fprintf(fp_uart,"floored to %lu\r\n",inum);
     return (double)inum;
 }
+
 
 uint32_t modem_get_airtime_usec(struct modem *this_modem, uint8_t payload_length) {
     // fprintf(fp_uart,"-----------------------\r\n");

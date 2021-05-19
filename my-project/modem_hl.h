@@ -62,7 +62,9 @@ void modem_transmit(struct modem *this_modem);
 void modem_load_and_transmit(struct modem *this_modem, uint8_t msg[MAX_PAYLOAD_LENGTH], uint8_t length);
 
 // Put the modem into RX mode
-bool modem_listen(struct modem *this_modem);
+void modem_listen(struct modem *this_modem);
+
+void modem_standby(struct modem *this_modem);
 
 // expresses that status of a data pulled from the fifo
 enum payload_status { PAYLOAD_GOOD, PAYLOAD_BAD, PAYLOAD_EMPTY };

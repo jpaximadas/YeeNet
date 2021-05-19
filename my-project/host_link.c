@@ -7,9 +7,6 @@
 
 struct host_interface link;
 
-uint8_t rdy_good = 0x00;
-uint8_t rdy_bad = 0x01;
-
 void host_link_init(enum iface_setting my_interface){
     switch(my_interface){
         case USB:
@@ -21,18 +18,25 @@ void host_link_init(enum iface_setting my_interface){
             usart1_host_link_init();
             link.iface_get_command = &usart1_get_command;
             link.iface_write_bytes = &usart1_write_bytes;
+            link.iface_write_byte = &usart1_write_byte;
             link.iface_release = &usart1_release;
             break;
         }
     }
-    link.iface_write_bytes(&rdy_good,1); //let the host know that the controller is ready (especially if a reset was performed)
+    link.iface_write_byte(GOOD); //let the host know that the controller is ready (especially if a reset was performed)
     link.iface_release();
 }
 
 void host_link_echo(uint8_t *command, uint16_t len);
 
+uint16_t test;
 void host_link_echo(uint8_t *command, uint16_t len){
-    link.iface_write_bytes(command,len);
+    //link.iface_write_bytes(command,len); //send back what was received
+    test = 0;
+    for(uint16_t i = 0; i<len; i++){
+        test += link.iface_write_byte(command[i]);
+    }
+    
 }
 
 void host_link_reset(uint8_t *command, uint16_t len);
@@ -40,123 +44,51 @@ void host_link_reset(uint8_t *command, uint16_t len);
 void host_link_reset(uint8_t *command, uint16_t len){
     scb_reset_system();
 }
-/*
-struct clist_elem modem_commands[] = {
-    {
-        .my_type = (enum elem_type) 9
-    },
-    {
-        .my_type = COMMAND,
-        .my_next_step = &host_link_modem_setup
-    },
-    {
-        .my_type = COMMAND,
-        .my_next_step = &host_link_modem_listen
-    },
-    {
-        .my_type = COMMAND,
-        .my_next_step = &host_link_modem_load_payload
-    },
-    {
-        .my_type = COMMAND,
-        .my_next_step = &host_link_modem_load_and_transmit
-    },
-    {
-        .my_type = COMMAND,
-        .my_next_step = &host_link_modem_transmit
-    },
-    {
-        .my_type = COMMAND,
-        .my_next_step = &host_link_modem_is_clear
-    },
-    {
-        .my_type = COMMAND,
-        .my_next_step = &host_link_modem_get_last_payload_rssi
-    },
-    {
-        .my_type = COMMAND,
-        .my_next_step = &host_link_modem_get_last_payload_snr
-    },
-    {
-        .my_type = COMMAND,
-        .my_next_step = &host_link_modem_get_airtime_usec
-    },
+
+#define NUM_COMMANDS 14
+void (*commands[])(uint8_t *,uint16_t len) = {
+    &host_link_reset,
+    &host_link_echo,
+    &host_link_buffer_pop,
+    &host_link_buffer_cap,
+    &host_link_modem_setup,
+    &host_link_modem_listen,
+    &host_link_modem_load_payload,
+    &host_link_modem_load_and_transmit,
+    &host_link_modem_transmit,
+    &host_link_modem_standby,
+    &host_link_modem_is_clear,
+    &host_link_modem_get_last_payload_rssi,
+    &host_link_modem_get_last_payload_snr,
+    &host_link_modem_get_airtime_usec
 };
 
-struct clist_elem buffer_commands[] = {
-    {
-        .my_type = (enum elem_type) 2
-    },
-    {
-        .my_type = COMMAND,
-        .my_next_step = &host_link_buffer_pop
-    },
-    {
-        .my_type = COMMAND,
-        .my_next_step = &host_link_buffer_cap
-    }
-};*/
-
-struct clist_elem clist_top_level[] = {
-    [0] = {4,0},
-    [1] = { COMMAND, &host_link_echo },
-    [2] = { COMMAND, &host_link_reset }
-    /*,
-    {
-        .my_type = COMMAND_LIST,
-        .my_next_step = modem_commands
-    },
-    {
-        .my_type = COMMAND_LIST,
-        .my_next_step = buffer_commands
-    }*/
-};
-
-//TODO make sure same command doesn't get run twice?
 uint8_t *cur_command;
+
 void host_link_parse(void){
-
-    //start at top level command list
-    struct clist_elem *cur_clist = clist_top_level;
-
     //update command pointer
     uint16_t len = (uint16_t) (*link.iface_get_command)(&cur_command);
+    //do nothing and return if retval of iface_get_command is NULL
     if(!len){
         return;
     }
-    
-    
-
-    //loop over the command
-    for(;;){
-    
-        //guard against a zero length command
-        if(!len){
-            link.iface_release();
-            return;
-        }
-        //guard against out of bounds
-        if(cur_command[0] < (uint8_t) cur_clist[0].my_type){
-            enum elem_type target_elem_type = cur_clist[cur_command[0]+1].my_type; //look up command
-            union next_step target_elem_next_step = cur_clist[cur_command[0]+1].my_next_step;
-            cur_command++; //move the buffer base pointer forward to ignore the parsed command
-            len--; //make the length reflect this change
-            switch(target_elem_type){
-                case COMMAND:
-                    link.iface_write_bytes(&rdy_good,1); //since a command was reached, the decode was successful
-                    //execute the command
-                    target_elem_next_step.function(cur_command, len);
-                    link.iface_release();
-                    return;
-                case COMMAND_LIST:
-                    //jump to the next command list
-                    cur_clist = target_elem_next_step.next_clist;
-                    break;
-            }
-        } else {
-            link.iface_write_bytes(&rdy_bad,1);//out of bounds sends a decode error
-            link.iface_release();
-        }
+    //check if command is out of bounds for the command list
+    if(cur_command[0]>=NUM_COMMANDS){
+        link.iface_write_byte(PARSE_ERROR);
+        link.iface_release();
+        return;
     }
+    //report a successful parse
+    link.iface_write_byte(GOOD);
+  
+    //look up the command in the table and pass the command
+    void (*command)(uint8_t *,uint16_t len) = commands[*cur_command]; 
+    //move the command pointer forward
+    cur_command++;
+    len--;
+    command(cur_command,len);
+    //release the interface once the command is done
+    link.iface_release();
+    
     
 }

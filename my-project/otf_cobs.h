@@ -3,7 +3,7 @@
 #pragma once
 
 #define COBS_DELIMETER 0x00
-#define COBS_TX_BUF_SIZE 300
+#define COBS_TX_BUF_SIZE 303
 #define COBS_RX_BUF_SIZE 300
 #define ENCODING_OVH_START 1
 #define ENCODING_OVH_END 1
@@ -46,5 +46,7 @@ struct cobs_encode_buf{
 };
 
 ssize_t cobs_encode_buf_push(struct cobs_encode_buf *encode_buf, uint8_t *buf, size_t n);
+
+ssize_t cobs_encode_buf_push_char(struct cobs_encode_buf *encode_buf, uint8_t c);
 
 void cobs_encode_buf_terminate(struct cobs_encode_buf *encode_buf);

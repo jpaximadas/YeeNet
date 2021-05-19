@@ -81,6 +81,33 @@ ssize_t cobs_encode_buf_push(struct cobs_encode_buf *encode_buf, uint8_t *buf, s
 	return i;
 }
 
+ssize_t cobs_encode_buf_push_char(struct cobs_encode_buf *encode_buf, uint8_t c){
+    //test if encode buf is terminated
+    if( encode_buf->frame_is_terminated ) return 0;
+    //test if there is space in the buffer
+    if(encode_buf->pos >= COBS_TX_BUF_SIZE-ENCODING_OVH_END) return 0;
+    //254 bytes of nonzero characters precede this point in the buffer; a non-data overhead byte is needed
+    if( (encode_buf->pos - encode_buf->last_zero_pos) == 0xFF ){
+        encode_buf->buf[encode_buf->last_zero_pos] = 0xFF; //fill in the last zero position with the distance to this overhead byte
+        encode_buf->last_zero_pos = encode_buf->pos; //record the position of this zero position
+        encode_buf->pos++; //move ahead in the tx buffer but not the input buffer
+    }
+    //encode as normal
+    
+    if(c != COBS_DELIMETER){
+        //next byte in input buffer is not zero
+        encode_buf->buf[encode_buf->pos] = c; //write it
+        //move to next character in the input buffer
+    }else{
+        //byte is a zero
+        encode_buf->buf[encode_buf->last_zero_pos] = encode_buf->pos - encode_buf->last_zero_pos; //fill in the last zero position with the distance to this zero
+        encode_buf->last_zero_pos = encode_buf->pos; //record the position of this next zero
+
+    }
+    encode_buf->pos++; //move ahead to the next byte in the tx buffer
+    return 1;	
+}
+
 void cobs_encode_buf_terminate(struct cobs_encode_buf *encode_buf){
     encode_buf->buf[encode_buf->pos] = COBS_DELIMETER;
 	encode_buf->buf[encode_buf->last_zero_pos]  = encode_buf->pos - encode_buf->last_zero_pos;

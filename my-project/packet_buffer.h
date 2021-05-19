@@ -7,6 +7,8 @@
 struct packet_record{
     uint8_t packet[MAX_PAYLOAD_LENGTH];
     uint8_t length;
+    int32_t rssi;
+    float snr;
 };
 
 struct packet_buf {

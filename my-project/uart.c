@@ -13,25 +13,27 @@ struct cobs_decode_buf usart1_cobs_rx_buffer = {
 	.buftype = DECODE_BUF
 };
 
-uint8_t rdy_encoding_error = 0x01;
+
 uint16_t tx_buf_pos;
+bool error_detected;
 void usart1_isr(void){
-	uint32_t serviced_irqs = 0;
- 
      // Process individual IRQs
 	if (((USART_CR1(platform_pinout.p_usart) & USART_CR1_RXNEIE) != 0) &&
 	    ((USART_SR(platform_pinout.p_usart) & USART_SR_RXNE) != 0)) {
+        
         enum cobs_decode_result ret = cobs_decode_buf_push_char(&usart1_cobs_rx_buffer,usart_recv(platform_pinout.p_usart));
+        
 		switch(ret){
 			case OK:
 				break;
 			case TERMINATED:
 				usart_disable_rx_interrupt(platform_pinout.p_usart);
+                //USART1_CR1 &= ~USART_CR1_RXNEIE;
 				break;
 			case OVERFLOW:
 			case ENCODING_ERROR:
 				cobs_buf_reset(&usart1_cobs_tx_buffer); //may be unnecessary
-				cobs_encode_buf_push(&usart1_cobs_tx_buffer,&rdy_encoding_error,1);
+				cobs_encode_buf_push_char(&usart1_cobs_tx_buffer,COBS_ERROR);
 				cobs_encode_buf_terminate(&usart1_cobs_tx_buffer);
 				usart1_release();
 				break;
@@ -66,11 +68,16 @@ ssize_t usart1_write_bytes(uint8_t *buf, size_t n) {
 	return cobs_encode_buf_push(&usart1_cobs_tx_buffer, buf, n);
 }
 
+ssize_t usart1_write_byte(uint8_t c){
+    return cobs_encode_buf_push_char(&usart1_cobs_tx_buffer,c);
+}
+
 //let internal and external callers release the interface
 //Note: be sure that tx buffer is empty by correctly terminating all packets before calling this function
 void usart1_release(){
 	cobs_encode_buf_terminate(&usart1_cobs_tx_buffer); //cap off the cobs buffer
 	cobs_buf_reset(&usart1_cobs_rx_buffer); //reset the rx buffer
+    error_detected = false;
 	usart_enable_rx_interrupt(platform_pinout.p_usart); //prepare for incoming bytes
 	tx_buf_pos = 0;
 	usart_enable_tx_interrupt(platform_pinout.p_usart);//start the send process

@@ -3,6 +3,8 @@
 #include <stdbool.h>
 #include "packet_buffer.h"
 
+
+//TODO: remove PACKET_BUFFER_LENGTH from this code. Add a this_buf->length.
 void packet_buf_init(struct packet_buf *this_buf, struct packet_record record_arr[PACKET_BUFFER_LENGTH]){
     this_buf->start = 0;
     this_buf->end = 0;
@@ -11,7 +13,12 @@ void packet_buf_init(struct packet_buf *this_buf, struct packet_record record_ar
     return;
 }
 
-//returns null if overflow
+/**
+ * Obtain a free packet record from the buffer.
+ * Returns NULL if space isn't available.
+ * @param this_buf a packet buffer to push to
+ * @return a pointer to a free packet record
+ */
 struct packet_record *packet_buf_push(struct packet_buf *this_buf){
     if(this_buf->full) {
         return (struct packet_record *) NULL;
@@ -27,7 +34,11 @@ struct packet_record *packet_buf_push(struct packet_buf *this_buf){
     }
 }
 
-//returns null if empty
+
+/**
+ * Get a packet from the buffer.
+ * Returns NULL if empty.
+ */ 
 struct packet_record *packet_buf_pop(struct packet_buf *this_buf){
     if( !(this_buf->full) && this_buf->start == this_buf->end){
         return (struct packet_record *) NULL;

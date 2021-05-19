@@ -32,7 +32,7 @@ void lora_write_fifo(struct modem *this_modem, uint8_t *buf, uint8_t len, uint8_
 void lora_read_fifo(struct modem *this_modem, uint8_t *buf, uint8_t len, uint8_t offset);
 
 void lora_config_modulation(struct modem *this_modem, struct modulation_config *modulation);
-bool lora_change_mode(struct modem *this_modem, enum lora_mode change_to, bool check_mode);
+void lora_change_mode(struct modem *this_modem, enum lora_mode change_to);
 
 uint8_t lora_read_reg(struct modem *this_modem, uint8_t reg);
 void lora_write_reg(struct modem *this_modem, uint8_t reg, uint8_t val);
