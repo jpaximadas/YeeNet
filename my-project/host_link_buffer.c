@@ -6,7 +6,7 @@
  * first byte is number of packets waiting when called
  */
 void host_link_buffer_pop(uint8_t *command, uint16_t len){
-    uint8_t waiting = PACKET_BUFFER_LENGTH - packet_buf_get_cap(&packet_buffer);
+    uint8_t waiting = packet_buf_get_cap(&packet_buffer);
     link.iface_write_byte(waiting);
     if(waiting){
         struct packet_record *rec = packet_buf_peek(&packet_buffer);

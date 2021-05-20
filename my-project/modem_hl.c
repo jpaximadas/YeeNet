@@ -3,6 +3,7 @@
 #include "modem_ll.h"
 #include "modem_ll_config.h"
 #include "uart.h"
+#include "platform/platform.h"
 #include "util.h"
 #include <libopencm3/stm32/gpio.h>
 #include <stdbool.h>
@@ -40,18 +41,24 @@ bool modem_setup(struct modem *this_modem,
     this_modem->rx_callback = &dummy_callback;
     this_modem->tx_callback = &dummy_callback;
 
+    platform_irq_init();
+
     //drive ss high
     ss_set(this_modem);
 
     // TODO: Allow user-configurable interrupt pins
     // For now, assume exti0 is used on A0
-    platform_irq_init();
+    
     exti0_modem = this_modem;
+
+    
 
     // Reset the board
     gpio_clear(this_modem->rst.port, this_modem->rst.pin);
     delay_nops(1000000);
     gpio_set(this_modem->rst.port, this_modem->rst.pin);
+
+    lora_change_mode(this_modem, SLEEP);
 
     // assume max power settings
     // Configure PA_BOOST with max power
