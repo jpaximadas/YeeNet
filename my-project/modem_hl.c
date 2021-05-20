@@ -45,6 +45,7 @@ bool modem_setup(struct modem *this_modem,
 
     // TODO: Allow user-configurable interrupt pins
     // For now, assume exti0 is used on A0
+    platform_irq_init();
     exti0_modem = this_modem;
 
     // Reset the board
@@ -120,20 +121,21 @@ void modem_attach_callbacks(struct modem *this_modem,
 }
 
 // this function will put the lora into a standby mode
-void modem_load_payload(struct modem *this_modem, uint8_t msg[MAX_PAYLOAD_LENGTH], uint8_t length) {
+bool modem_load_payload(struct modem *this_modem, uint8_t *msg, uint8_t length) {
 
     lora_change_mode(this_modem, STANDBY);
 
     if (this_modem->modulation->header_enabled) {                     // explicit header mode
         lora_write_reg(this_modem, LORA_REG_PAYLOAD_LENGTH, length);  // inform lora of payload length
-        lora_write_fifo(this_modem, msg, length, 0);
+        lora_write_fifo(this_modem, msg, length, 0, 0);
+        return true;
     } else {  // fixed length, implicit mode
-
-        if (length > this_modem->modulation->payload_length) {
-            length = this_modem->modulation->payload_length;
+        if(length>(this_modem->modulation->payload_length)){ //packet is too long
+            return false;
         }
-
-        lora_write_fifo(this_modem, msg, length, 0);
+        //write to the fifo and pad with zeros as needed
+        lora_write_fifo(this_modem, msg, length, this_modem->modulation->payload_length-length, 0);
+        return true;
     }
 }
 
@@ -142,9 +144,10 @@ void modem_transmit(struct modem *this_modem) {
     lora_change_mode(this_modem, TX);
 }
 
-void modem_load_and_transmit(struct modem *this_modem, uint8_t msg[MAX_PAYLOAD_LENGTH], uint8_t length) {
-    modem_load_payload(this_modem, msg, length);
+bool modem_load_and_transmit(struct modem *this_modem, uint8_t msg[MAX_PAYLOAD_LENGTH], uint8_t length) {
+    bool retval = modem_load_payload(this_modem, msg, length);
     modem_transmit(this_modem);
+    return retval;
 }
 
 void modem_listen(struct modem *this_modem) {

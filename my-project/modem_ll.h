@@ -17,6 +17,7 @@
 enum lora_mode { SLEEP, STANDBY, RX, TX };
 
 extern struct modem *volatile exti0_modem;  // must be volatile or will be optimized out
+extern uint8_t test; //sponge
 
 void irq_setup(struct modem *this_modem);
 
@@ -28,7 +29,7 @@ inline static void ss_clear(struct modem *this_modem) {
     gpio_clear(this_modem->ss.port, this_modem->ss.pin);
 }
 
-void lora_write_fifo(struct modem *this_modem, uint8_t *buf, uint8_t len, uint8_t offset);
+void lora_write_fifo(struct modem *this_modem, uint8_t *buf, uint8_t len, uint8_t trailling_zeros, uint8_t offset);
 void lora_read_fifo(struct modem *this_modem, uint8_t *buf, uint8_t len, uint8_t offset);
 
 void lora_config_modulation(struct modem *this_modem, struct modulation_config *modulation);

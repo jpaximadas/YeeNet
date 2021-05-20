@@ -29,12 +29,11 @@ void host_link_init(enum iface_setting my_interface){
 
 void host_link_echo(uint8_t *command, uint16_t len);
 
-uint16_t test;
+
 void host_link_echo(uint8_t *command, uint16_t len){
     //link.iface_write_bytes(command,len); //send back what was received
-    test = 0;
     for(uint16_t i = 0; i<len; i++){
-        test += link.iface_write_byte(command[i]);
+        link.iface_write_byte(command[i]);
     }
     
 }

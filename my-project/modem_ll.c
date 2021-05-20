@@ -45,8 +45,14 @@ void exti0_isr(void) {
     // systick_counter_enable();
 }
 
-void lora_write_fifo(struct modem *this_modem, uint8_t *buf, uint8_t len, uint8_t offset) {
-    // Some assertions to check input data in DEBUG mode
+uint8_t test = 0;
+void lora_write_fifo(struct modem *this_modem, uint8_t *buf, uint8_t len, uint8_t trailing_zeros, uint8_t offset) {
+    test=0;
+    // clip the number of trailing zeros if there are too many
+    uint8_t max_zeros = MAX_PAYLOAD_LENGTH-len;
+    if(trailing_zeros>max_zeros){
+        trailing_zeros = max_zeros;
+    }
 
     // Update modem's FIFO address pointer
     ss_clear(this_modem);
@@ -55,12 +61,17 @@ void lora_write_fifo(struct modem *this_modem, uint8_t *buf, uint8_t len, uint8_
     ss_set(this_modem);
 
     delay_nops(1000);
-    // assume compiler is not good enough to emit an sbi instruction for the digital_writes
+
     // Write data to FIFO.
     ss_clear(this_modem);
     spi_xfer(this_modem->spi_interface, LORA_REG_FIFO | WRITE_MASK);
     for (uint8_t i = 0; i < len; i++) {
         spi_xfer(this_modem->spi_interface, buf[i]);
+        test++;
+    }
+    for (uint8_t i = 0; i<trailing_zeros;i++){
+        spi_xfer(this_modem->spi_interface, 0);
+        test++;
     }
     ss_set(this_modem);
 }

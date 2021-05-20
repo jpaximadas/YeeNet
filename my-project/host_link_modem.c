@@ -60,7 +60,7 @@ void host_link_modem_load_payload(uint8_t *command, uint16_t len){
 /**
  *  0 is OK, 1 is empty packet, 2 is too long
  */
-void host_link_modem_load_and_transmit(volatile uint8_t *command, volatile uint16_t len){
+void host_link_modem_load_and_transmit(uint8_t *command, uint16_t len){
     if(len==0){
         link.iface_write_byte(0x01);
         return;

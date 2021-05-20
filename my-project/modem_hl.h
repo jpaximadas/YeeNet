@@ -54,12 +54,12 @@ void modem_attach_callbacks(struct modem *this_modem,
                             void *_callback_arg);
 
 // set the payload for next TX
-void modem_load_payload(struct modem *this_modem, uint8_t msg[MAX_PAYLOAD_LENGTH], uint8_t length);
+bool modem_load_payload(struct modem *this_modem, uint8_t *msg, uint8_t length);
 
 // Transmit
 void modem_transmit(struct modem *this_modem);
 
-void modem_load_and_transmit(struct modem *this_modem, uint8_t msg[MAX_PAYLOAD_LENGTH], uint8_t length);
+bool modem_load_and_transmit(struct modem *this_modem, uint8_t *msg, uint8_t length);
 
 // Put the modem into RX mode
 void modem_listen(struct modem *this_modem);
