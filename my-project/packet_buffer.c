@@ -23,7 +23,7 @@ struct packet_record *packet_buf_push(struct packet_buf *this_buf){
     if(this_buf->full) {
         return (struct packet_record *) NULL;
     } else {
-        struct packet_record *retval = &(this_buf->records[this_buf->end]);
+        struct packet_record *retval = &((this_buf->records)[this_buf->end]);
         if(this_buf->end==(PACKET_BUFFER_LENGTH-1)){
             this_buf->end = 0;
         }else{

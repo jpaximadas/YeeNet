@@ -1,12 +1,11 @@
 #include "host_link_modem.h"
 #include "modem_hl.h"
+#include "modem_ll.h"
 #include "platform/platform.h"
 #include "packet_buffer.h"
 #include "modem_ll_config.h"
 
 struct modem host_link_modem;
-
-struct packet_buf host_link_packet_buf;
 
 void host_link_modem_packet_capture(void *param){
     struct packet_buf *buf = (struct packet_buf *)param;
@@ -24,7 +23,7 @@ void host_link_modem_tx_done(void *param){
 //TODO add modulation config
 void host_link_modem_setup(uint8_t *command, uint16_t len){
     modem_setup(&host_link_modem, platform_pinout.p_spi, platform_pinout.modem_ss, platform_pinout.modem_rst);
-    modem_attach_callbacks(&host_link_modem,&host_link_modem_packet_capture,&host_link_modem_tx_done, &host_link_packet_buf);
+    modem_attach_callbacks(&host_link_modem,&host_link_modem_packet_capture,&host_link_modem_tx_done, &packet_buffer);
     return;
 }
 

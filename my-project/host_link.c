@@ -46,20 +46,20 @@ void host_link_reset(uint8_t *command, uint16_t len){
 
 #define NUM_COMMANDS 14
 void (*commands[])(uint8_t *,uint16_t len) = {
-    &host_link_reset,
-    &host_link_echo,
-    &host_link_buffer_pop,
-    &host_link_buffer_cap,
-    &host_link_modem_setup,
-    &host_link_modem_listen,
-    &host_link_modem_load_payload,
-    &host_link_modem_load_and_transmit,
-    &host_link_modem_transmit,
-    &host_link_modem_standby,
-    &host_link_modem_is_clear,
-    &host_link_modem_get_last_payload_rssi,
-    &host_link_modem_get_last_payload_snr,
-    &host_link_modem_get_airtime_usec
+    &host_link_reset, //0
+    &host_link_echo, //1
+    &host_link_buffer_pop, //2
+    &host_link_buffer_cap, //3
+    &host_link_modem_setup, //4
+    &host_link_modem_listen, //5
+    &host_link_modem_load_payload, //6
+    &host_link_modem_load_and_transmit, //7
+    &host_link_modem_transmit, //8
+    &host_link_modem_standby, //9
+    &host_link_modem_is_clear, //10
+    &host_link_modem_get_last_payload_rssi, //11
+    &host_link_modem_get_last_payload_snr, //12
+    &host_link_modem_get_airtime_usec, //13
 };
 
 uint8_t *cur_command;
