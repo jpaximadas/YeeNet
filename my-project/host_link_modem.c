@@ -132,3 +132,62 @@ void host_link_modem_get_airtime_usec(uint8_t *command, uint16_t len){
     }
     
 }
+
+/**
+ * takes in a bunch of modulation data and configs the modem
+ */
+void host_link_modem_set_modulation(uint8_t *command, uint16_t len){
+    /*
+    message must contain 
+    [0] SF
+    [1] bandwidth setting
+    [2] coding rate setting
+    [3] CRC enabled
+    [4] header enabled
+    [5-6] preamble length
+    [7] payload length
+    [8-11] frequency
+    */
+    if(len != 12){       
+        link.iface_write_byte(0x01); //report a bad command
+        return;
+    }
+    if(command[0]>=SF_MAX){
+        link.iface_write_byte(0x01);
+        return;
+    }
+    if(command[1]>=bandwidth_MAX){
+        link.iface_write_byte(0x01);
+        return;
+    }
+    if(command[2]>=CR_MAX){
+        link.iface_write_byte(0x01);
+        return;
+    }
+    volatile uint32_t frequency = *((uint32_t *)(&(command[8])));
+    //check if in ISM band
+    if((frequency>928000000) || (frequency<902000000)){
+        link.iface_write_byte(0x01);
+        return;
+    }
+    struct modulation_config *modulation = host_link_modem.modulation;
+
+    modulation->spreading_factor = (enum spreading_factor_setting) command[0];
+    modulation->bandwidth = (enum bandwidth_setting) command[1];
+    modulation->coding_rate = (enum coding_rate_setting) command[2];
+    modulation->header_enabled = (bool) command[3];
+    modulation->crc_enabled = (bool) command[4];
+    modulation->preamble_length = *((uint16_t *)(&(command[5])));
+    modulation->payload_length = command[7];
+    modulation->frequency = frequency;
+
+    lora_change_mode(&host_link_modem,SLEEP);
+    lora_config_modulation(&host_link_modem);
+    lora_change_mode(&host_link_modem,STANDBY);
+    link.iface_write_byte(0x00); //report a good command
+    return;
+}
+
+void host_link_get_modulation(uint8_t *command, uint16_t len){
+
+}

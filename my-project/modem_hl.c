@@ -13,9 +13,7 @@
 
 #define ARRAY_SIZE(x) (sizeof((x)) / sizeof(*(x)))
 
-#define FXOSC 32000000
-#define FREQ_TO_REG(in_freq) ((uint32_t)((((uint64_t)in_freq) << 19) / FXOSC))
-#define REG_TO_FREQ(in_reg) ((uint32_t)((FXOSC * in_reg) >> 19))
+
 
 static void dummy_callback(void *param);
 
@@ -48,10 +46,7 @@ bool modem_setup(struct modem *this_modem,
 
     // TODO: Allow user-configurable interrupt pins
     // For now, assume exti0 is used on A0
-    
     exti0_modem = this_modem;
-
-    
 
     // Reset the board
     gpio_clear(this_modem->rst.port, this_modem->rst.pin);
@@ -78,40 +73,10 @@ bool modem_setup(struct modem *this_modem,
     // Disable frequency hopping
     lora_write_reg(this_modem, LORA_REG_HOP_PERIOD, 0x00);
 
-    // Set frequency
-    /*
-    lora_write_reg(this_modem,LORA_REG_FR_MSB, (FREQ_TO_REG(915000000) >> 16) & 0b11111111);
-    lora_write_reg(this_modem,LORA_REG_FR_MID, (FREQ_TO_REG(915000000) >> 8) & 0b11111111);
-    lora_write_reg(this_modem,LORA_REG_FR_LSB, FREQ_TO_REG(915000000) & 0b11111111);
-    */
-    lora_write_reg(this_modem, LORA_REG_FR_MSB, (FREQ_TO_REG(920000000) >> 16) & 0b11111111);
-    lora_write_reg(this_modem, LORA_REG_FR_MID, (FREQ_TO_REG(920000000) >> 8) & 0b11111111);
-    lora_write_reg(this_modem, LORA_REG_FR_LSB, FREQ_TO_REG(920000000) & 0b11111111);
-    // fprintf(fp_uart,"starting modulation config\r\n");
-    lora_config_modulation(this_modem, &default_modulation);
-    switch (this_modem->modulation->spreading_factor) {
-        case SF6:
-            this_modem->extra_time_ms = 5;
-            break;
-        case SF7:
-            this_modem->extra_time_ms = 1;
-            break;
-        case SF8:
-            this_modem->extra_time_ms = 1;
-            break;
-        case SF9:
-            this_modem->extra_time_ms = 1;
-            break;
-        case SF10:
-            this_modem->extra_time_ms = 3;
-            break;
-        case SF11:
-            this_modem->extra_time_ms = 6;
-            break;
-        case SF12:
-            this_modem->extra_time_ms = 15;
-            break;
-    }
+    //configure them modulation
+    this_modem->modulation = &default_modulation;
+    lora_config_modulation(this_modem);
+    
     seed_random(this_modem);
 
     return true;
@@ -250,15 +215,6 @@ uint32_t modem_get_airtime_usec(struct modem *this_modem, uint8_t payload_length
 
     int32_t n_preamble = this_modem->modulation->preamble_length;  // number of preamble symbols
 
-    /*
-    fprintf(fp_uart,"payload bytes: %lu\r\n",payload_bytes);
-    fprintf(fp_uart,"spreading factor: %lu\r\n",spreading_factor);
-    fprintf(fp_uart,"crc: %lu\r\n",crc);
-    fprintf(fp_uart,"implicit header: %lu\r\n",implicit_header);
-    fprintf(fp_uart,"LDRO: %lu\r\n",low_data_rate_optimize);
-    fprintf(fp_uart,"coding rate: %lu\r\n",coding_rate);
-    */
-
     // just an intermediate step
     double n_payload =
         ((double)(8 * payload_bytes - 4 * spreading_factor + 28 + 16 * crc - 20 * implicit_header)) /
@@ -294,19 +250,16 @@ bool modem_is_clear(struct modem *this_modem) {
     return true;
 }
 
+//has nonlinearity issues when snr>=0
 int32_t modem_get_last_payload_rssi(struct modem *this_modem) {
     int32_t reg = lora_read_reg(this_modem, LORA_REG_PKT_RSSI_VALUE);
     return -157 + reg;  // assume use of HF port see page 112 of lora manual
 }
 
 float modem_get_last_payload_snr(struct modem *this_modem) {
-    int32_t reg = lora_read_reg(this_modem, LORA_REG_PKT_SNR_VALUE);
+    uint8_t reg = lora_read_reg(this_modem, LORA_REG_PKT_SNR_VALUE);
     float snr = ((float)reg) / 4.0;
-    if (reg >= 0) {
-        return snr;
-    } else {
-        return ((float)modem_get_last_payload_rssi(this_modem)) + snr;
-    }
+    return snr;
 }
 
 bool payload_length_is_fixed(struct modem *this_modem) {

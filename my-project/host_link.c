@@ -4,6 +4,7 @@
 #include <libopencm3/cm3/scb.h>
 #include "host_link_buffer.h"
 #include "host_link_modem.h"
+#include "address.h"
 
 struct host_interface link;
 
@@ -44,7 +45,11 @@ void host_link_reset(uint8_t *command, uint16_t len){
     scb_reset_system();
 }
 
-#define NUM_COMMANDS 14
+void host_link_get_local_address(uint8_t *command, uint16_t len){
+    link.iface_write_byte(local_address_get());
+}
+
+#define NUM_COMMANDS 16
 void (*commands[])(uint8_t *,uint16_t len) = {
     &host_link_reset, //0
     &host_link_echo, //1
@@ -60,10 +65,11 @@ void (*commands[])(uint8_t *,uint16_t len) = {
     &host_link_modem_get_last_payload_rssi, //11
     &host_link_modem_get_last_payload_snr, //12
     &host_link_modem_get_airtime_usec, //13
+    &host_link_modem_set_modulation, //14
+    &host_link_get_local_address //15
 };
 
 uint8_t *cur_command;
-volatile bool trip;
 void host_link_parse(void){
     //update command pointer
     uint16_t len = (uint16_t) (*link.iface_get_command)(&cur_command);
@@ -80,12 +86,11 @@ void host_link_parse(void){
     //report a successful parse
     link.iface_write_byte(GOOD);
   
-    //look up the command in the table and pass the command
+    //look up the command in the table
     void (*command)(uint8_t *,uint16_t len) = commands[*cur_command]; 
     //move the command pointer forward
     cur_command++;
     len--;
-    trip = !trip;
     command(cur_command,len);
     //release the interface once the command is done
     link.iface_release();

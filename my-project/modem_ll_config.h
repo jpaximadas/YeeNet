@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <sys/types.h>
 
-enum spreading_factor_setting { SF6 = 0, SF7, SF8, SF9, SF10, SF11, SF12 };
+enum spreading_factor_setting { SF6 = 0, SF7, SF8, SF9, SF10, SF11, SF12, SF_MAX };
 
 enum bandwidth_setting {
     bandwidth_7800 = 0,
@@ -15,10 +15,11 @@ enum bandwidth_setting {
     bandwidth_62500,
     bandwidth_125000,
     bandwidth_250000,
-    bandwidth_500000
+    bandwidth_500000,
+    bandwidth_MAX
 };
 
-enum coding_rate_setting { CR4_5 = 0, CR4_6, CR4_7, CR4_8 };
+enum coding_rate_setting { CR4_5 = 0, CR4_6, CR4_7, CR4_8, CR_MAX };
 
 struct modulation_config {
     enum spreading_factor_setting spreading_factor;
@@ -28,7 +29,7 @@ struct modulation_config {
     bool crc_enabled;
     uint16_t preamble_length;
     uint8_t payload_length;  // this doesn't matter if headers are enabled
-    uint32_t airtime;
+    uint32_t frequency;
 };
 
 uint32_t get_bandwidth(enum bandwidth_setting bandwidth);

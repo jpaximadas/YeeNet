@@ -46,7 +46,8 @@ struct modulation_config long_range_modulation = {.spreading_factor = SF12,
                                                   .header_enabled = true,  // enable header
                                                   .crc_enabled = true,     // enable crc
                                                   .preamble_length = 8,
-                                                  .payload_length = 1};
+                                                  .payload_length = 1,
+                                                  .frequency = 920000000};
 
 struct modulation_config short_range_modulation = {.spreading_factor = SF6,
                                                    .bandwidth = bandwidth_500000,
@@ -54,7 +55,8 @@ struct modulation_config short_range_modulation = {.spreading_factor = SF6,
                                                    .header_enabled = false,  // enable header
                                                    .crc_enabled = true,      // enable crc
                                                    .preamble_length = 8,
-                                                   .payload_length = 255};
+                                                   .payload_length = 255,
+                                                   .frequency = 920000000};
 
 struct modulation_config default_modulation = {.spreading_factor = SF6,
                                                .bandwidth = bandwidth_500000,
@@ -62,4 +64,5 @@ struct modulation_config default_modulation = {.spreading_factor = SF6,
                                                .header_enabled = false,  // enable header
                                                .crc_enabled = true,      // enable crc
                                                .preamble_length = 8,
-                                               .payload_length = 255};
+                                               .payload_length = 255,
+                                               .frequency = 920000000};

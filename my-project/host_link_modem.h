@@ -27,3 +27,5 @@ void host_link_modem_get_last_payload_snr(uint8_t *command, uint16_t len);
 void host_link_modem_get_airtime_usec(uint8_t *command, uint16_t len);
 
 void host_link_modem_read_reg(uint8_t *command, uint16_t len);
+
+void host_link_modem_set_modulation(uint8_t *command, uint16_t len);

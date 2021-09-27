@@ -165,7 +165,45 @@ void lora_write_reg_and_check(struct modem *this_modem, uint8_t reg, uint8_t val
     //ASSERT(val == new_val);
 }
 
-void lora_config_modulation(struct modem *this_modem, struct modulation_config *modulation) {
+#define FXOSC 32000000
+#define FREQ_TO_REG(in_freq) ((uint32_t)((((uint64_t)in_freq) << 19) / FXOSC))
+#define REG_TO_FREQ(in_reg) ((uint32_t)((FXOSC * in_reg) >> 19))
+
+void lora_config_modulation(struct modem *this_modem) {
+
+    // get the modem modulation
+    struct modulation_config *modulation= this_modem->modulation;
+
+    // program extra time
+    switch (modulation->spreading_factor) {
+        case SF6:
+            this_modem->extra_time_ms = 5;
+            break;
+        case SF7:
+            this_modem->extra_time_ms = 1;
+            break;
+        case SF8:
+            this_modem->extra_time_ms = 1;
+            break;
+        case SF9:
+            this_modem->extra_time_ms = 1;
+            break;
+        case SF10:
+            this_modem->extra_time_ms = 3;
+            break;
+        case SF11:
+            this_modem->extra_time_ms = 6;
+            break;
+        case SF12:
+            this_modem->extra_time_ms = 15;
+            break;
+    }
+
+    //set the frequency
+    lora_write_reg(this_modem, LORA_REG_FR_MSB, (FREQ_TO_REG(modulation->frequency) >> 16) & 0b11111111);
+    lora_write_reg(this_modem, LORA_REG_FR_MID, (FREQ_TO_REG(modulation->frequency) >> 8) & 0b11111111);
+    lora_write_reg(this_modem, LORA_REG_FR_LSB, FREQ_TO_REG(modulation->frequency) & 0b11111111);
+
     uint8_t temp = 0;
     temp |= ((uint8_t)modulation->bandwidth) << 4;          // set top nibble for bandwidth
     temp |= (((uint8_t)modulation->coding_rate) + 1) << 1;  // set top 3 bits of bottom nibble for coding rate
@@ -224,8 +262,7 @@ void lora_config_modulation(struct modem *this_modem, struct modulation_config *
     // Max out the payload size. This will prevent packet rejection.
     lora_write_reg(this_modem, LORA_REG_MAX_PAYLOAD_LENGTH, MAX_PAYLOAD_LENGTH);
 
-    // inform modem struct of current modulation
-    this_modem->modulation = modulation;
+    
 }
 
 void seed_random(struct modem *this_modem) {

@@ -32,7 +32,7 @@ inline static void ss_clear(struct modem *this_modem) {
 void lora_write_fifo(struct modem *this_modem, uint8_t *buf, uint8_t len, uint8_t trailling_zeros, uint8_t offset);
 void lora_read_fifo(struct modem *this_modem, uint8_t *buf, uint8_t len, uint8_t offset);
 
-void lora_config_modulation(struct modem *this_modem, struct modulation_config *modulation);
+void lora_config_modulation(struct modem *this_modem);
 void lora_change_mode(struct modem *this_modem, enum lora_mode change_to);
 
 uint8_t lora_read_reg(struct modem *this_modem, uint8_t reg);
