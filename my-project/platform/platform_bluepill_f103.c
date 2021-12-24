@@ -66,6 +66,7 @@ void platform_usart_init(void) {
 
     //enable interrupt and rx
     nvic_enable_irq(NVIC_USART1_IRQ);
+    nvic_set_priority(NVIC_USART1_IRQ, 0);
     
     // Finally enable the USART
     usart_enable(platform_pinout.p_usart);
@@ -106,7 +107,7 @@ void platform_irq_init(void) {
     // assume EXTI0
 
     nvic_enable_irq(NVIC_EXTI0_IRQ);  // interrupt on PA0
-    nvic_set_priority(NVIC_EXTI0_IRQ, 0);
+    nvic_set_priority(NVIC_EXTI0_IRQ, 1);
 
     exti_select_source(EXTI0, platform_pinout.modem_irq.port);
     exti_set_trigger(EXTI0, EXTI_TRIGGER_RISING);

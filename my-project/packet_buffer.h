@@ -3,6 +3,7 @@
 #include <stdbool.h>
 
 #define PACKET_BUFFER_LENGTH 3 //NOTE: This is arbitrary
+extern uint32_t n_overflow;
 
 struct packet_record{
     uint8_t packet[MAX_PAYLOAD_LENGTH];

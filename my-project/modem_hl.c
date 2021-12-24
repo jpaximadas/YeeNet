@@ -257,7 +257,7 @@ int32_t modem_get_last_payload_rssi(struct modem *this_modem) {
 }
 
 float modem_get_last_payload_snr(struct modem *this_modem) {
-    uint8_t reg = lora_read_reg(this_modem, LORA_REG_PKT_SNR_VALUE);
+    int8_t reg = lora_read_reg(this_modem, LORA_REG_PKT_SNR_VALUE);
     float snr = ((float)reg) / 4.0;
     return snr;
 }

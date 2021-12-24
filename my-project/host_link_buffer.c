@@ -26,3 +26,13 @@ void host_link_buffer_cap(uint8_t *command, uint16_t len){
     link.iface_write_byte(cap);
     return;
 }
+
+void host_link_buffer_get_n_overflow(uint8_t *command, uint16_t len){
+    link.iface_write_bytes(&n_overflow,sizeof(n_overflow));
+    return;
+}
+
+void host_link_buffer_reset_n_overflow(uint8_t *command, uint16_t len){
+    n_overflow=0;
+    return;
+}

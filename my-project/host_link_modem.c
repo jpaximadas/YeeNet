@@ -10,9 +10,12 @@ struct modem host_link_modem;
 void host_link_modem_packet_capture(void *param){
     struct packet_buf *buf = (struct packet_buf *)param;
     struct packet_record *record = packet_buf_push(buf);
-    modem_get_payload(&host_link_modem,record->packet,&(record->length));
-    record->rssi = modem_get_last_payload_rssi(&host_link_modem);
-    record->snr = modem_get_last_payload_snr(&host_link_modem);
+    if(record!=NULL){
+        modem_get_payload(&host_link_modem,record->packet,&(record->length));
+        record->rssi = modem_get_last_payload_rssi(&host_link_modem);
+        record->snr = modem_get_last_payload_snr(&host_link_modem);
+    }
+    modem_listen(&host_link_modem);
 }
 
 volatile bool host_link_tx_in_progress = false;
@@ -130,7 +133,6 @@ void host_link_modem_get_airtime_usec(uint8_t *command, uint16_t len){
     } else{
         link.iface_write_byte(0x01); //report a bad command
     }
-    
 }
 
 /**

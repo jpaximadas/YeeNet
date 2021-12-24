@@ -49,7 +49,7 @@ void host_link_get_local_address(uint8_t *command, uint16_t len){
     link.iface_write_byte(local_address_get());
 }
 
-#define NUM_COMMANDS 16
+#define NUM_COMMANDS 18
 void (*commands[])(uint8_t *,uint16_t len) = {
     &host_link_reset, //0
     &host_link_echo, //1
@@ -66,7 +66,9 @@ void (*commands[])(uint8_t *,uint16_t len) = {
     &host_link_modem_get_last_payload_snr, //12
     &host_link_modem_get_airtime_usec, //13
     &host_link_modem_set_modulation, //14
-    &host_link_get_local_address //15
+    &host_link_get_local_address, //15
+    &host_link_buffer_get_n_overflow, //16
+    &host_link_buffer_reset_n_overflow //17
 };
 
 uint8_t *cur_command;

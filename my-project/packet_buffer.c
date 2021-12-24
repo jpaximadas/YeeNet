@@ -13,6 +13,7 @@ void packet_buf_init(struct packet_buf *this_buf, struct packet_record record_ar
     return;
 }
 
+uint32_t n_overflow = 0;
 /**
  * Obtain a free packet record from the buffer.
  * Returns NULL if space isn't available.
@@ -21,6 +22,7 @@ void packet_buf_init(struct packet_buf *this_buf, struct packet_record record_ar
  */
 struct packet_record *packet_buf_push(struct packet_buf *this_buf){
     if(this_buf->full) {
+        n_overflow++;
         return (struct packet_record *) NULL;
     } else {
         struct packet_record *retval = &((this_buf->records)[this_buf->end]);
@@ -33,7 +35,6 @@ struct packet_record *packet_buf_push(struct packet_buf *this_buf){
         return retval;
     }
 }
-
 
 /**
  * Get a packet from the buffer.
