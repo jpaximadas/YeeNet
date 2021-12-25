@@ -1,7 +1,10 @@
+/**
+ * @file platform.h
+ * @brief Defines data structures and functions that abstract platform functionality
+ */
+
 #pragma once
-
 #include "util.h"
-
 #include <stdint.h>
 
 /**
@@ -41,7 +44,6 @@ extern const struct platform_pinout_table platform_pinout;
 //
 // Setup functions
 //
-
 void platform_clocks_init(void);
 void platform_usart_init(void);
 void platform_gpio_init(void);
