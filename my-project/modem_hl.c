@@ -2,8 +2,8 @@
 #include "modem_hl.h"
 #include "modem_ll.h"
 #include "modem_ll_config.h"
-#include "uart.h"
 #include "platform/platform.h"
+#include "uart.h"
 #include "util.h"
 #include <libopencm3/stm32/gpio.h>
 #include <stdbool.h>
@@ -13,11 +13,10 @@
 
 #define ARRAY_SIZE(x) (sizeof((x)) / sizeof(*(x)))
 
-
-
 static void dummy_callback(void *param);
 
 static void dummy_callback(void *param) {
+    (void)param;
     return;
 }
 
@@ -25,7 +24,6 @@ bool modem_setup(struct modem *this_modem,
                  uint32_t spi_interface,
                  pin_descriptor_t ss,
                  pin_descriptor_t rst) {
-
     // set up irq info in struct
     this_modem->irq_data = 0;
     this_modem->irq_seen = true;
@@ -41,7 +39,7 @@ bool modem_setup(struct modem *this_modem,
 
     platform_irq_init();
 
-    //drive ss high
+    // drive ss high
     ss_set(this_modem);
 
     // TODO: Allow user-configurable interrupt pins
@@ -57,11 +55,11 @@ bool modem_setup(struct modem *this_modem,
 
     // assume max power settings
     // Configure PA_BOOST with max power
-    lora_write_reg_and_check(this_modem, LORA_REG_PA_CONFIG, 0x8f, true);
+    lora_write_reg(this_modem, LORA_REG_PA_CONFIG, 0x8f);
     // Enable overload current protection with max trim
-    lora_write_reg_and_check(this_modem, LORA_REG_OCP, 0x3f, true);
+    lora_write_reg(this_modem, LORA_REG_OCP, 0x3f);
     // Set RegPaDac to 0x87, increases power?
-    lora_write_reg_and_check(this_modem, REG_PA_DAC, 0x84, true);
+    lora_write_reg(this_modem, REG_PA_DAC, 0x84);
 
     // set sync word
     // lora_write_reg(this_modem,0x39,0x00);
@@ -73,10 +71,10 @@ bool modem_setup(struct modem *this_modem,
     // Disable frequency hopping
     lora_write_reg(this_modem, LORA_REG_HOP_PERIOD, 0x00);
 
-    //configure them modulation
+    // configure them modulation
     this_modem->modulation = &default_modulation;
     lora_config_modulation(this_modem);
-    
+
     seed_random(this_modem);
 
     return true;
@@ -94,19 +92,18 @@ void modem_attach_callbacks(struct modem *this_modem,
 
 // this function will put the lora into a standby mode
 bool modem_load_payload(struct modem *this_modem, uint8_t *msg, uint8_t length) {
-
     lora_change_mode(this_modem, STANDBY);
 
     if (this_modem->modulation->header_enabled) {                     // explicit header mode
         lora_write_reg(this_modem, LORA_REG_PAYLOAD_LENGTH, length);  // inform lora of payload length
         lora_write_fifo(this_modem, msg, length, 0, 0);
         return true;
-    } else {  // fixed length, implicit mode
-        if(length>(this_modem->modulation->payload_length)){ //packet is too long
+    } else {                                                      // fixed length, implicit mode
+        if (length > (this_modem->modulation->payload_length)) {  // packet is too long
             return false;
         }
-        //write to the fifo and pad with zeros as needed
-        lora_write_fifo(this_modem, msg, length, this_modem->modulation->payload_length-length, 0);
+        // write to the fifo and pad with zeros as needed
+        lora_write_fifo(this_modem, msg, length, this_modem->modulation->payload_length - length, 0);
         return true;
     }
 }
@@ -127,8 +124,8 @@ void modem_listen(struct modem *this_modem) {
     lora_change_mode(this_modem, RX);
 }
 
-void modem_standby(struct modem *this_modem){
-    lora_change_mode(this_modem,STANDBY);
+void modem_standby(struct modem *this_modem) {
+    lora_change_mode(this_modem, STANDBY);
 }
 
 // this function will put the lora into a standby mode
@@ -173,7 +170,6 @@ double ceil(double num) {
     // fprintf(fp_uart,"floored to %lu\r\n",inum);
     return (double)inum;
 }
-
 
 uint32_t modem_get_airtime_usec(struct modem *this_modem, uint8_t payload_length) {
     // fprintf(fp_uart,"-----------------------\r\n");
@@ -250,7 +246,7 @@ bool modem_is_clear(struct modem *this_modem) {
     return true;
 }
 
-//has nonlinearity issues when snr>=0
+// has nonlinearity issues when snr>=0
 int32_t modem_get_last_payload_rssi(struct modem *this_modem) {
     int32_t reg = lora_read_reg(this_modem, LORA_REG_PKT_RSSI_VALUE);
     return -157 + reg;  // assume use of HF port see page 112 of lora manual

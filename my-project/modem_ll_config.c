@@ -34,6 +34,7 @@ uint32_t get_bandwidth(enum bandwidth_setting bandwidth) {
             retval = 250000;
             break;
         case bandwidth_500000:
+        case bandwidth_MAX:
             retval = 500000;
             break;
     }

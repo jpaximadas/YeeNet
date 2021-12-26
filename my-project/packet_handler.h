@@ -193,7 +193,7 @@ void handler_setup(struct packet_handler *this_handler,
  *  - Whether or not the modem is busy
  *
  * If both checks pass, the packet handler is reset for a new packet, the packet is transmitted, and true is
- * returned If either check fails, false is returned. packet_handler->my_state can be polled to avoid
+ * returned. If either check fails, false is returned. packet_handler->my_state can be polled to avoid
  * performing a function call however even if the handler state is UNLOCKED this does not preclude the
  * possibility that the modem will be busy.
  *

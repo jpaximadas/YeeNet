@@ -1,16 +1,12 @@
-#include "callback_timer.h"  //debug
 #include "modem_ll.h"
 #include "modem_ll_config.h"
-#include "sx127x.h"
 #include "platform/platform.h"
-#include "uart.h"  //debug
-#include "util.h"  //debug
+#include "sx127x.h"
 #include <libopencm3/cm3/nvic.h>
 #include <libopencm3/cm3/systick.h>
 #include <libopencm3/stm32/exti.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/spi.h>
-#include <libopencm3/stm32/usart.h>  //debug
 #include <stdbool.h>
 #include <sys/types.h>
 
@@ -24,7 +20,7 @@ void exti0_isr(void) {
 
     exti0_modem->irq_data = lora_read_reg(exti0_modem, LORA_REG_IRQFLAGS);
 
-    //irq flag register must be reset twice. Is this hardware errata?
+    // irq flag register must be reset twice. Is this hardware errata?
     lora_write_reg(exti0_modem, LORA_REG_IRQFLAGS, 0xFF);
     lora_write_reg(exti0_modem, LORA_REG_IRQFLAGS, 0xFF);
 
@@ -45,12 +41,14 @@ void exti0_isr(void) {
     // systick_counter_enable();
 }
 
-uint8_t test = 0;
-void lora_write_fifo(struct modem *this_modem, uint8_t *buf, uint8_t len, uint8_t trailing_zeros, uint8_t offset) {
-    test=0;
+void lora_write_fifo(struct modem *this_modem,
+                     uint8_t *buf,
+                     uint8_t len,
+                     uint8_t trailing_zeros,
+                     uint8_t offset) {
     // clip the number of trailing zeros if there are too many
-    uint8_t max_zeros = MAX_PAYLOAD_LENGTH-len;
-    if(trailing_zeros>max_zeros){
+    uint8_t max_zeros = MAX_PAYLOAD_LENGTH - len;
+    if (trailing_zeros > max_zeros) {
         trailing_zeros = max_zeros;
     }
 
@@ -67,11 +65,9 @@ void lora_write_fifo(struct modem *this_modem, uint8_t *buf, uint8_t len, uint8_
     spi_xfer(this_modem->spi_interface, LORA_REG_FIFO | WRITE_MASK);
     for (uint8_t i = 0; i < len; i++) {
         spi_xfer(this_modem->spi_interface, buf[i]);
-        test++;
     }
-    for (uint8_t i = 0; i<trailing_zeros;i++){
+    for (uint8_t i = 0; i < trailing_zeros; i++) {
         spi_xfer(this_modem->spi_interface, 0);
-        test++;
     }
     ss_set(this_modem);
 }
@@ -149,30 +145,13 @@ void lora_write_reg(struct modem *this_modem, uint8_t reg, uint8_t val) {
     ss_set(this_modem);
 }
 
-void lora_write_reg_and_check(struct modem *this_modem, uint8_t reg, uint8_t val, bool delay) {
-    // Write register
-    // fprintf(fp_uart,"writing: %x\r\n",val);
-    lora_write_reg(this_modem, reg, val);
-    // Delay
-    if (delay)
-        delay_nops(100000);
-
-    // read reg
-    uint8_t new_val = lora_read_reg(this_modem, reg);
-    // fprintf(fp_uart,"got back: %x\r\n",new_val);
-
-    // Return whether write succeeded
-    //ASSERT(val == new_val);
-}
-
 #define FXOSC 32000000
 #define FREQ_TO_REG(in_freq) ((uint32_t)((((uint64_t)in_freq) << 19) / FXOSC))
 #define REG_TO_FREQ(in_reg) ((uint32_t)((FXOSC * in_reg) >> 19))
 
 void lora_config_modulation(struct modem *this_modem) {
-
     // get the modem modulation
-    struct modulation_config *modulation= this_modem->modulation;
+    struct modulation_config *modulation = this_modem->modulation;
 
     // program extra time
     switch (modulation->spreading_factor) {
@@ -195,11 +174,12 @@ void lora_config_modulation(struct modem *this_modem) {
             this_modem->extra_time_ms = 6;
             break;
         case SF12:
+        case SF_MAX:
             this_modem->extra_time_ms = 15;
             break;
     }
 
-    //set the frequency
+    // set the frequency
     lora_write_reg(this_modem, LORA_REG_FR_MSB, (FREQ_TO_REG(modulation->frequency) >> 16) & 0b11111111);
     lora_write_reg(this_modem, LORA_REG_FR_MID, (FREQ_TO_REG(modulation->frequency) >> 8) & 0b11111111);
     lora_write_reg(this_modem, LORA_REG_FR_LSB, FREQ_TO_REG(modulation->frequency) & 0b11111111);
@@ -261,8 +241,6 @@ void lora_config_modulation(struct modem *this_modem) {
 
     // Max out the payload size. This will prevent packet rejection.
     lora_write_reg(this_modem, LORA_REG_MAX_PAYLOAD_LENGTH, MAX_PAYLOAD_LENGTH);
-
-    
 }
 
 void seed_random(struct modem *this_modem) {

@@ -3,6 +3,8 @@
 #include "packet_buffer.h"
 
 void host_link_buffer_pop(uint8_t *command, uint16_t len) {
+    (void)command;
+    (void)len;
     uint8_t waiting = packet_buf_get_cap(&packet_buffer);
     link.iface_write_byte(waiting);
     if (waiting) {
@@ -19,17 +21,23 @@ void host_link_buffer_pop(uint8_t *command, uint16_t len) {
 }
 
 void host_link_buffer_cap(uint8_t *command, uint16_t len) {
+    (void)command;
+    (void)len;
     uint8_t cap = packet_buf_get_cap(&packet_buffer);
     link.iface_write_byte(cap);
     return;
 }
 
 void host_link_buffer_get_n_overflow(uint8_t *command, uint16_t len) {
-    link.iface_write_bytes(&n_overflow, sizeof(n_overflow));
+    (void)command;
+    (void)len;
+    link.iface_write_bytes((uint8_t *)&n_overflow, sizeof(n_overflow));
     return;
 }
 
 void host_link_buffer_reset_n_overflow(uint8_t *command, uint16_t len) {
+    (void)command;
+    (void)len;
     n_overflow = 0;
     return;
 }
