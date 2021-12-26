@@ -8,7 +8,7 @@
  $ git config core.hooksPath git-hooks # Only necessary if you plan on contributing
  $ export YEENET_BOARD=BLUEPILL_F103
  $ make -C libopencm3
- $ make -C my-project
+ $ make -C src
 ```
 
 If you have an older git, or got ahead of yourself and skipped the ```--recurse-submodules```
@@ -17,7 +17,7 @@ you can fix things by running ```git submodule update --init``` (This is only ne
 If you are targeting development board other than the STM32 "Blue Pill", change YEENET_BOARD accordingly.
 For a list of supported boards, see [Supported Boards](#supported-boards)
 
-Subsequent changes to the source files only require ```make -C my-project```
+Subsequent changes to the source files only require ```make -C src```
 
 # How to upload
 This repository uses the stlink open source STM32 MCU programming toolset:
@@ -27,20 +27,22 @@ https://github.com/stlink-org/stlink
  2. Ensure SWDIO, SWCLK, and GND are connected to the MCU (only connect 3.3V if you intend to power the board from the programmer)
  3. Program the chip:
   ```
-  $ ./st-flash --reset write awesomesauce.bin 0x8000000
+  $ cd src
+  $ make upload
   ```
-
+OpenOCD is an alternative to stlink but is not supported by `make upload`.
  # How to debug
-Once the binary has been uploaded run the following in the the my-project directory:
+Once the binary has been uploaded run the following in the the src directory:
  1. Start the gdb server 
  ```
  $ ./st-util
  ```
- 2. In another terminal--still in my-project--start GDB and configure
+ 2. In another terminal--still in src--start GDB and configure
  ```
- $ arm-none-eabi-gdb awesomesauce.elf
+ $ gdb yeenet_router_firmware.elf
+ $ set processor armv7
  $ target remote localhost:4242
- $ load awesomesauce.elf
+ $ load yeenet_router_firmware.elf
 ```
 Further GDB on STM reading:
 
@@ -49,23 +51,13 @@ https://www.st.com/resource/en/user_manual/dm00613038-stm32cubeide-stlink-gdb-se
 Note that this pdf uses the STMCube GDB server, not the open source stlink one. However, from the perspective of the GDB client, there isn't a difference.
 Page 6/15 of the pdf shows how to use breakpoints and watchpoints.
 
- # How to use serial
-You can use GNU screen to interact with the board over serial.
-Note this program does not provide echo so your text won't appear on the screen as you type. The blinking indicators on whatever USB to UART device you are using will indicate if the command works.
-```
- $ screen [PORT] 115200
-```
-```[PORT]``` should be replaced with the USB port the USB to UART chip is using.
-
-Example:
-
-```
- $ screen /dev/ttyUSB0 115200
-```
+ # How to use the serial interface
+There are serial drivers in development here:
+https://github.com/jpaximadas/yeenet-router-driver-python
 
 # Directories
-* my-project contains the program
-* my-common-code contains shared files from libopencm3
+* src contains the program
+* shared contains shared files from libopencm3
 
 # Supported boards
 YeeNet aims to target readily available and low-cost STM32 development boards. See below for a table of supported targets and their corresponding YEENET_BOARD value.
@@ -121,7 +113,6 @@ Please read the warnings at the end of the section before attempting to the brea
 2. Write packet router
 3. Implement USB and retain UART functionality
 4. Write up documentation
-5. Guard fprintf debug lines using separate defines to enable debug for different files
 5. Improve backoff_rng in packet_handler so it doesn't exhaust the entropy pool quickly
 6. Improve organization of hardware setup
 7. Start repo for user interface (use dear imgui)
