@@ -2,18 +2,21 @@
 #include "modem_hl.h"
 #include "modem_ll.h"
 #include "modem_ll_config.h"
-#include "packet_buffer.h"
+#include "payload_buffer.h"
 #include "platform/platform.h"
 
 struct modem host_link_modem;
 
 void host_link_modem_packet_capture(void *param) {
-    struct packet_buf *buf = (struct packet_buf *)param;
-    struct packet_record *record = packet_buf_push(buf);
+    struct payload_buffer *buf = (struct payload_buffer *)param;
+    struct payload_record *record = payload_record_alloc();  // get a payload record
+
     if (record != NULL) {
-        modem_get_payload(&host_link_modem, record->packet, &(record->length));
+        modem_get_payload(&host_link_modem, record->contents.raw_payload.payload,
+                          &(record->contents.raw_payload.len));
         record->rssi = modem_get_last_payload_rssi(&host_link_modem);
         record->snr = modem_get_last_payload_snr(&host_link_modem);
+        payload_buffer_push(buf, record);  // push the record to the host link buffer
     }
     modem_listen(&host_link_modem);
 }
@@ -28,9 +31,10 @@ void host_link_modem_tx_done(void *param) {
 void host_link_modem_setup(uint8_t *command, uint16_t len) {
     (void)command;
     (void)len;
+    payload_buffer_init(&host_link_payload_buffer);
     modem_setup(&host_link_modem, platform_pinout.p_spi, platform_pinout.modem_ss, platform_pinout.modem_rst);
     modem_attach_callbacks(&host_link_modem, &host_link_modem_packet_capture, &host_link_modem_tx_done,
-                           &packet_buffer);
+                           &host_link_payload_buffer);
     return;
 }
 

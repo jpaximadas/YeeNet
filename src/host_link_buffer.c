@@ -1,21 +1,18 @@
 #include "host_link.h"
 #include "host_link_buffer.h"
-#include "packet_buffer.h"
+#include "payload_buffer.h"
 
 void host_link_buffer_pop(uint8_t *command, uint16_t len) {
     (void)command;
     (void)len;
-    uint8_t waiting = packet_buf_get_cap(&packet_buffer);
+    uint8_t waiting = payload_buffer_capacity(&host_link_payload_buffer);
     link.iface_write_byte(waiting);
     if (waiting) {
-        struct packet_record *rec =
-            packet_buf_peek(&packet_buffer);  // only peek, this will prevent an interrupt from writing to
-                                              // this memory while we work
+        struct payload_record *rec = payload_buffer_pop(&host_link_payload_buffer);
         link.iface_write_bytes((uint8_t *)&(rec->rssi), 4);
         link.iface_write_bytes((uint8_t *)&(rec->snr), 4);
-        link.iface_write_bytes(rec->packet, rec->length);
-        packet_buf_pop(
-            &packet_buffer);  // the data has been moved to a buffer thru iface_write, free the memory
+        link.iface_write_bytes(rec->contents.raw_payload.payload, rec->contents.raw_payload.len);
+        payload_record_free(rec);
     }
     return;
 }
@@ -23,7 +20,7 @@ void host_link_buffer_pop(uint8_t *command, uint16_t len) {
 void host_link_buffer_cap(uint8_t *command, uint16_t len) {
     (void)command;
     (void)len;
-    uint8_t cap = packet_buf_get_cap(&packet_buffer);
+    uint8_t cap = payload_buffer_capacity(&host_link_payload_buffer);
     link.iface_write_byte(cap);
     return;
 }
@@ -31,13 +28,13 @@ void host_link_buffer_cap(uint8_t *command, uint16_t len) {
 void host_link_buffer_get_n_overflow(uint8_t *command, uint16_t len) {
     (void)command;
     (void)len;
-    link.iface_write_bytes((uint8_t *)&n_overflow, sizeof(n_overflow));
+    link.iface_write_byte(free_records.n_underflow);
     return;
 }
 
 void host_link_buffer_reset_n_overflow(uint8_t *command, uint16_t len) {
     (void)command;
     (void)len;
-    n_overflow = 0;
+    free_records.n_underflow = 0;
     return;
 }
