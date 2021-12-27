@@ -16,7 +16,6 @@ CFILES += api.c \
 		  packet_handler.c \
 		  host_link.c \
 		  platform/platform.c \
-		  packet_buffer.c \
 		  payload_buffer.c \
 		  host_link_buffer.c \
 		  host_link_modem.c \
