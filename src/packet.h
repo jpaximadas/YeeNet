@@ -1,5 +1,7 @@
 
 #pragma once
+#include "sx127x.h"
+#include <sys/types.h>
 
 enum packet_type { ACK, NACK, DATA_ACKED, DATA_UNACKED };
 
