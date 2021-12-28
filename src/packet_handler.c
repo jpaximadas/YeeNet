@@ -5,6 +5,7 @@
 #include "modem_ll.h"
 #include "packet.h"
 #include "packet_handler.h"
+#include "payload_buffer.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <sys/types.h>
@@ -12,6 +13,8 @@
 #include <util.h>
 
 #define PACKET_PROCESS_OFFSET_MS 1
+
+struct packet_handler handler0;
 
 void handler_failure(void *param);
 
@@ -46,8 +49,8 @@ void handler_post_rx(void *param) {
     uint8_t recv_len;
 
     struct packet_handler *this_handler = (struct packet_handler *)param;
-    enum payload_status stat =
-        modem_get_payload(this_handler->my_modem, (uint8_t *)(this_handler->rx_pkt), &recv_len);
+    struct payload_record *rec = this_handler->rx_pkt;
+    enum payload_status stat = modem_get_payload(this_handler->my_modem, rec->contents.raw, &(rec->len));
 
     this_handler->my_modem->irq_seen = true;
 
@@ -69,12 +72,12 @@ void handler_post_rx(void *param) {
 
     uint8_t tx_on_cleanup = false;
 
-    // cast top byte to type
-    enum packet_type incoming_type = (enum packet_type) * ((uint8_t *)this_handler->rx_pkt);
+    // read the type of the packet
+    enum packet_type incoming_type = rec->contents.packet.type;
 
     switch (incoming_type) {
         case ACK: {
-            struct packet_ack *cur_ack = (struct packet_ack *)(this_handler->rx_pkt);
+            struct packet_ack *cur_ack = (struct packet_ack *)&(rec->contents.packet);
             if (this_handler->my_state == LOCKED) {  // is TX ongoing
                 if (cur_ack->dest == 0x00 ||
                     cur_ack->dest == this_handler->my_addr) {        // is the packet addressed to this node
@@ -92,7 +95,7 @@ void handler_post_rx(void *param) {
         }
 
         case NACK: {
-            struct packet_nack *cur_nack = (struct packet_nack *)(this_handler->rx_pkt);
+            struct packet_nack *cur_nack = (struct packet_nack *)&(rec->contents.packet);
             if (this_handler->my_state == LOCKED) {  // is tx ongoing
 
                 if (this_handler->tx_pkt->dest ==
@@ -117,7 +120,7 @@ void handler_post_rx(void *param) {
         }
 
         case DATA_ACKED: {
-            if (this_handler->rx_pkt->dest == 0x00 || this_handler->rx_pkt->dest == this_handler->my_addr) {
+            if (rec->contents.packet.dest == 0x00 || rec->contents.packet.dest == this_handler->my_addr) {
                 /*
                 if(handicap_counter<2){
                         fprintf(fp_uart,"HANDICAP\r\n");
@@ -127,7 +130,7 @@ void handler_post_rx(void *param) {
                 }
                 handicap_counter = 0;
                 */
-                this_handler->my_ack.dest = this_handler->rx_pkt->src;
+                this_handler->my_ack.dest = rec->contents.packet.src;
                 tx_on_cleanup = true;
                 modem_load_payload(this_handler->my_modem, (uint8_t *)&(this_handler->my_ack),
                                    sizeof(struct packet_ack));
@@ -139,7 +142,7 @@ void handler_post_rx(void *param) {
         }
 
         case DATA_UNACKED: {
-            if (this_handler->rx_pkt->dest == 0x00 || this_handler->rx_pkt->dest == this_handler->my_addr) {
+            if (rec->contents.packet.dest == 0x00 || rec->contents.packet.dest == this_handler->my_addr) {
                 (*(this_handler->pkt_rdy_callback))(
                     this_handler->callback_arg);  // execute packet ready callback
             }
@@ -159,7 +162,7 @@ void handler_post_rx(void *param) {
 
 void handler_setup(struct packet_handler *this_handler,
                    struct modem *_my_modem,
-                   struct packet_data *_rx_pkt,
+                   struct payload_record *_rx_pkt,
                    void (*_pkt_rdy_callback)(void *),
                    void *_callback_arg,
                    enum send_mode _my_send_mode,
@@ -208,7 +211,7 @@ void handler_setup(struct packet_handler *this_handler,
     modem_listen(this_handler->my_modem);
 }
 
-void set_rx_pkt_pointer(struct packet_handler *this_handler, struct packet_data *new_location) {
+void handler_set_rx_pkt_pointer(struct packet_handler *this_handler, struct packet_data *new_location) {
     this_handler->rx_pkt = new_location;
 }
 

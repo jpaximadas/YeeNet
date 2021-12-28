@@ -135,7 +135,7 @@ struct packet_handler {
     struct packet_data *tx_pkt;
 
     /** pointer to location of where incoming packets should be written to */
-    struct packet_data *rx_pkt;
+    struct payload_record *rx_pkt;
 
     /** function pointer for callback executed after a data packet is received and processed */
     void (*pkt_rdy_callback)(void *);
@@ -155,6 +155,8 @@ struct packet_handler {
     /** <b>internal variable</b> precomputed nack airtime */
     uint32_t nack_airtime_ms;
 };
+
+extern struct packet_handler handler0;
 
 /**
  * Set up a packet handler.
@@ -179,7 +181,7 @@ struct packet_handler {
  */
 void handler_setup(struct packet_handler *this_handler,
                    struct modem *_my_modem,
-                   struct packet_data *_rx_pkt,
+                   struct payload_record *_rx_pkt,
                    void (*_pkt_rdy_callback)(void *),
                    void *_callback_arg,
                    enum send_mode _my_send_mode,
@@ -209,7 +211,7 @@ bool handler_request_transmit(struct packet_handler *this_handler, struct packet
  * @param this_handler pointer to handler struct
  * @param new_location pointer to packet_data struct
  */
-void set_rx_pkt_pointer(struct packet_handler *this_handler, struct packet_data *new_location);
+void handler_set_rx_pkt_pointer(struct packet_handler *this_handler, struct payload_record *new_location);
 
 static void handler_backoff_retransmit(void *param);
 

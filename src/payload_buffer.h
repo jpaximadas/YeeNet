@@ -6,14 +6,9 @@
 
 #define ALL_FREE_RECORDS 6
 
-struct raw_payload {
-    uint8_t len;
-    uint8_t payload[MAX_PAYLOAD_LENGTH];
-};
-
 union payload {
     struct packet_data packet;
-    struct raw_payload raw_payload;
+    uint8_t raw[MAX_PAYLOAD_LENGTH];
 };
 
 enum payload_type { RAW, PACKET };
@@ -21,6 +16,7 @@ enum payload_type { RAW, PACKET };
 struct payload_record {
     float snr;
     int32_t rssi;
+    uint8_t len;
     enum payload_type type;
     union payload contents;
 };

@@ -20,6 +20,8 @@ static void dummy_callback(void *param) {
     return;
 }
 
+struct modem modem0;  // data structure to represent the only modem in the system;
+
 bool modem_setup(struct modem *this_modem,
                  uint32_t spi_interface,
                  pin_descriptor_t ss,

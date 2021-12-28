@@ -10,7 +10,7 @@ int main(void) {
     platform_spi_init();
     local_address_setup();
 
-    free_records_init();
+    free_records_init();  // initialize packet record pool
     host_link_init(USART);
 
     platform_set_indicator(true);

@@ -11,7 +11,7 @@ void host_link_buffer_pop(uint8_t *command, uint16_t len) {
         struct payload_record *rec = payload_buffer_pop(&host_link_payload_buffer);
         link.iface_write_bytes((uint8_t *)&(rec->rssi), 4);
         link.iface_write_bytes((uint8_t *)&(rec->snr), 4);
-        link.iface_write_bytes(rec->contents.raw_payload.payload, rec->contents.raw_payload.len);
+        link.iface_write_bytes(rec->contents.raw, rec->len);
         payload_record_free(rec);
     }
     return;

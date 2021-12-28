@@ -77,6 +77,8 @@ struct modem {
     uint32_t extra_time_ms;
 };
 
+extern struct modem modem0;
+
 /**
  * @brief set up the modem and associated MCU peripherals
  *
