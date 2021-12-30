@@ -2,6 +2,7 @@
 #include "host_link.h"
 #include "host_link_buffer.h"
 #include "host_link_modem.h"
+#include "host_link_packet_handler.h"
 #include "uart.h"
 #include <libopencm3/cm3/scb.h>
 #include <sys/types.h>
@@ -77,7 +78,7 @@ void host_link_get_local_address(uint8_t *command, uint16_t len) {
     link.iface_write_byte(local_address_get());
 }
 
-#define NUM_COMMANDS 18  // be certain that this number reflects the length of the jump table!
+#define NUM_COMMANDS 23  // be certain that this number reflects the length of the jump table!
 /**
  * This is the jump table that contains all the host link commands.
  * The ordering should never change otherwise the host's driver software will have to be updated.
@@ -101,7 +102,12 @@ void (*commands[])(uint8_t *, uint16_t len) = {
     &host_link_modem_set_modulation,         // 14
     &host_link_get_local_address,            // 15
     &host_link_buffer_get_n_overflow,        // 16
-    &host_link_buffer_reset_n_overflow       // 17
+    &host_link_buffer_reset_n_overflow,      // 17
+    &host_link_handler_setup,                // 18
+    &host_link_handler_request_transmit,     // 19
+    &host_link_handler_set_send_mode,        // 20
+    &host_link_handler_set_backoffs_max,     // 21
+    &host_link_handler_set_timeout,          // 22
 };
 
 uint8_t *cur_command;  // points to the incoming frame from the interface

@@ -103,7 +103,7 @@ struct packet_handler {
     enum send_mode my_send_mode;
 
     /** indicates whether the handler is ready for a new packet */
-    enum handler_state my_state;
+    volatile enum handler_state my_state;
 
     /** indicates status of last packet that was sent */
     enum packet_state last_packet_status;
@@ -138,7 +138,7 @@ struct packet_handler {
     struct payload_record *rx_pkt;
 
     /** function pointer for callback executed after a data packet is received and processed */
-    void (*pkt_rdy_callback)(void *);
+    bool (*pkt_rdy_callback)(void *);
 
     /** void pointer to data meant to be the argument to the callback function */
     void *callback_arg;
@@ -182,7 +182,7 @@ extern struct packet_handler handler0;
 void handler_setup(struct packet_handler *this_handler,
                    struct modem *_my_modem,
                    struct payload_record *_rx_pkt,
-                   void (*_pkt_rdy_callback)(void *),
+                   bool (*_pkt_rdy_callback)(void *),
                    void *_callback_arg,
                    enum send_mode _my_send_mode,
                    uint8_t _backoffs_max);
@@ -205,6 +205,8 @@ void handler_setup(struct packet_handler *this_handler,
  */
 bool handler_request_transmit(struct packet_handler *this_handler, struct packet_data *pkt);
 
+static void handler_backoff_retransmit(void *param);
+
 /**
  * Change location a new packet is written to
  *
@@ -213,15 +215,13 @@ bool handler_request_transmit(struct packet_handler *this_handler, struct packet
  */
 void handler_set_rx_pkt_pointer(struct packet_handler *this_handler, struct payload_record *new_location);
 
-static void handler_backoff_retransmit(void *param);
-
 static inline void handler_rx_cleanup(struct packet_handler *this_handler, bool tx_on_cleanup) {
     if (tx_on_cleanup) {
         modem_transmit(this_handler->my_modem);
 
     } else {
         if (this_handler->tx_snooze) {  // this part probably doesn't work
-            handler_backoff_retransmit(this_handler);
+            handler_backoff_retransmit((void *)this_handler);
             this_handler->tx_snooze = false;
         }
         modem_listen(this_handler->my_modem);

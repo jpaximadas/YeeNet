@@ -75,6 +75,10 @@ struct modem {
      * Necessary for packet_handler operation
      */
     uint32_t extra_time_ms;
+    /**
+     * Time of last packet received
+     */
+    uint32_t last_rx_time;
 };
 
 extern struct modem modem0;
@@ -236,3 +240,7 @@ float modem_get_last_payload_snr(struct modem *this_modem);
  * @return indicates if the payload length is fixed
  */
 bool payload_length_is_fixed(struct modem *this_modem);
+
+static inline int32_t modem_get_last_rx_time(struct modem *this_modem) {
+    return this_modem->last_rx_time;
+}

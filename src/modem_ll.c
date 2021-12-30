@@ -1,3 +1,4 @@
+#include "callback_timer.h"
 #include "modem_ll.h"
 #include "modem_ll_config.h"
 #include "platform/platform.h"
@@ -17,7 +18,7 @@ struct modem *volatile exti0_modem = NULL;
 void exti0_isr(void) {
     // TODO figure out how to demote systick priority
     exti_reset_request(EXTI0);  // must always be first
-
+    exti0_modem->last_rx_time = system_ms;
     exti0_modem->irq_data = lora_read_reg(exti0_modem, LORA_REG_IRQFLAGS);
 
     // irq flag register must be reset twice. Is this hardware errata?

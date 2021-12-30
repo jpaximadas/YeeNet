@@ -50,6 +50,13 @@ void handler_post_rx(void *param) {
 
     struct packet_handler *this_handler = (struct packet_handler *)param;
     struct payload_record *rec = this_handler->rx_pkt;
+
+    // check for null pointer here
+    if (rec == NULL) {
+        handler_rx_cleanup(this_handler, false);
+        return;
+    }
+
     enum payload_status stat = modem_get_payload(this_handler->my_modem, rec->contents.raw, &(rec->len));
 
     this_handler->my_modem->irq_seen = true;
@@ -163,7 +170,7 @@ void handler_post_rx(void *param) {
 void handler_setup(struct packet_handler *this_handler,
                    struct modem *_my_modem,
                    struct payload_record *_rx_pkt,
-                   void (*_pkt_rdy_callback)(void *),
+                   bool (*_pkt_rdy_callback)(void *),
                    void *_callback_arg,
                    enum send_mode _my_send_mode,
                    uint8_t _backoffs_max) {
@@ -211,7 +218,7 @@ void handler_setup(struct packet_handler *this_handler,
     modem_listen(this_handler->my_modem);
 }
 
-void handler_set_rx_pkt_pointer(struct packet_handler *this_handler, struct packet_data *new_location) {
+void handler_set_rx_pkt_pointer(struct packet_handler *this_handler, struct payload_record *new_location) {
     this_handler->rx_pkt = new_location;
 }
 
@@ -235,7 +242,8 @@ bool handler_request_transmit(struct packet_handler *this_handler, struct packet
 
     this_handler->my_state = LOCKED;
 
-    this_handler->tx_pkt = pkt;  // assign tx_pkt pointer to input
+    this_handler->tx_pkt = pkt;        // assign tx_pkt pointer to input
+    pkt->src = this_handler->my_addr;  // force the source address
 
     // get and store length
     this_handler->pkt_length = this_handler->tx_pkt->len + PACKET_DATA_OVERHEAD;

@@ -19,6 +19,7 @@ CFILES += api.c \
 		  payload_buffer.c \
 		  host_link_buffer.c \
 		  host_link_modem.c \
+		  host_link_packet_handler.c \
 		  
 
 AFILES += api-asm.S

@@ -9,8 +9,10 @@ void host_link_buffer_pop(uint8_t *command, uint16_t len) {
     link.iface_write_byte(waiting);
     if (waiting) {
         struct payload_record *rec = payload_buffer_pop(&host_link_payload_buffer);
+        link.iface_write_byte((uint8_t)rec->type);
         link.iface_write_bytes((uint8_t *)&(rec->rssi), 4);
         link.iface_write_bytes((uint8_t *)&(rec->snr), 4);
+        link.iface_write_bytes((uint8_t *)&(rec->time), 4);
         link.iface_write_bytes(rec->contents.raw, rec->len);
         payload_record_free(rec);
     }

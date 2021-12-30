@@ -10,10 +10,24 @@ void host_link_modem_packet_capture(void *param) {
     struct payload_record *record = payload_record_alloc();  // get a payload record
 
     if (record != NULL) {
-        modem_get_payload(&modem0, record->contents.raw, &(record->len));
+        enum payload_status stat = modem_get_payload(&modem0, record->contents.raw, &(record->len));
         record->rssi = modem_get_last_payload_rssi(&modem0);
         record->snr = modem_get_last_payload_snr(&modem0);
-        payload_buffer_push(buf, record);  // push the record to the host link buffer
+        record->time = modem_get_last_rx_time(&modem0);
+        switch (stat) {
+            case PAYLOAD_GOOD:
+                record->type = RAW_GOOD;
+                payload_buffer_push(buf, record);  // push the record to the host link buffer
+                break;
+            case PAYLOAD_BAD:
+                record->type = RAW_BAD;
+                payload_buffer_push(buf, record);
+                break;
+            case PAYLOAD_EMPTY:
+            default:
+                payload_record_free(record);
+                break;
+        }
     }
     modem_listen(&modem0);
 }

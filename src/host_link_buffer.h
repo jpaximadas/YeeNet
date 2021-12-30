@@ -19,8 +19,11 @@
  * Postcondition:
  * Response of the follow formating is written to the host_link interface via iface_write:
  * [0] number of packets in buffer when command was executed
- * [1:end] record of the first packet out of the buffer if one was present (consult packet_buffer.h for
- * structure of a packet_record)
+ * [1] payload type
+ * [2:5] RSSI as int32
+ * [6:9] SNR as float
+ * [10:13] system time as uint32
+ * [14:end] data
  */
 
 void host_link_buffer_pop(uint8_t *command, uint16_t len);
