@@ -7,6 +7,8 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/spi.h>
 #include <libopencm3/stm32/usart.h>
+#include <libopencm3/stm32/exti.h>
+#include <libopencm3/cm3/nvic.h>
 
 const struct platform_pinout_table platform_pinout = {
     // Peripherals
@@ -57,6 +59,10 @@ void platform_usart_init(void) {
     usart_set_flow_control(platform_pinout.p_usart, USART_FLOWCONTROL_NONE);
     usart_set_mode(platform_pinout.p_usart, USART_MODE_TX_RX);
 
+    // enable interrupt and rx
+    nvic_enable_irq(NVIC_USART1_IRQ);
+    nvic_set_priority(NVIC_USART1_IRQ, 0);
+
     // Finally enable the USART
     usart_enable(platform_pinout.p_usart);
 }
@@ -97,6 +103,18 @@ void platform_spi_init(void) {
     spi_set_nss_high(platform_pinout.p_spi);
 
     spi_enable(platform_pinout.p_spi);
+}
+
+void platform_irq_init(void) {
+    // TODO: implement other pins for irq
+    // assume EXTI0
+
+    nvic_enable_irq(NVIC_EXTI0_IRQ);  // interrupt on PA0
+    nvic_set_priority(NVIC_EXTI0_IRQ, 1);
+
+    exti_select_source(EXTI0, platform_pinout.modem_irq.port);
+    exti_set_trigger(EXTI0, EXTI_TRIGGER_RISING);
+    exti_enable_request(EXTI0);
 }
 
 // TODO: write something here to blink the blackpill LED
