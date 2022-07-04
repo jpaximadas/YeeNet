@@ -78,7 +78,7 @@ void host_link_get_local_address(uint8_t *command, uint16_t len) {
     link.iface_write_byte(local_address_get());
 }
 
-#define NUM_COMMANDS 23  // be certain that this number reflects the length of the jump table!
+#define NUM_COMMANDS 24  // be certain that this number reflects the length of the jump table!
 /**
  * This is the jump table that contains all the host link commands.
  * The ordering should never change otherwise the host's driver software will have to be updated.
@@ -108,6 +108,7 @@ void (*commands[])(uint8_t *, uint16_t len) = {
     &host_link_handler_set_send_mode,        // 20
     &host_link_handler_set_backoffs_max,     // 21
     &host_link_handler_set_timeout,          // 22
+    &host_link_handler_set_sense             // 23
 };
 
 uint8_t *cur_command;  // points to the incoming frame from the interface

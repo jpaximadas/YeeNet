@@ -25,3 +25,5 @@ void host_link_handler_set_backoffs_max(uint8_t *command, uint16_t len);
 // void host_link_handler_set_carrier_sense(uint8_t *command, uint16_t len);
 
 void host_link_handler_set_timeout(uint8_t *command, uint16_t len);
+
+void host_link_handler_set_sense(uint8_t *command, uint16_t len);

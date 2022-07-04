@@ -11,14 +11,14 @@ union payload {
     uint8_t raw[MAX_PAYLOAD_LENGTH];
 };
 
-enum payload_type { RAW_GOOD = 0, RAW_BAD, PACKET };
+enum payload_type { RAW_GOOD = 0, RAW_BAD, PACKET, OUTGOING_PACKET };
 
 struct payload_record {
+    enum payload_type type;
+    union payload contents;
     float snr;
     int32_t rssi;
     uint8_t len;
-    enum payload_type type;
-    union payload contents;
     uint32_t time;
 };
 

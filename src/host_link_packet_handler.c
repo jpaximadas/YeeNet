@@ -103,3 +103,12 @@ void host_link_handler_set_timeout(uint8_t *command, uint16_t len) {
     link.iface_write_byte(0x00);
     return;
 }
+
+void host_link_handler_set_sense(uint8_t *command, uint16_t len) {
+    if (len != 1) {
+        link.iface_write_byte(0x01);  // command too long
+        return;
+    }
+    handler_set_sense_mode(&handler0, command[0]);
+    link.iface_write_byte(0x00);  // success
+}
