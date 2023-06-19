@@ -21,7 +21,7 @@ const struct platform_pinout_table platform_pinout = {
     .modem_mosi = {GPIOA, GPIO7},
     .modem_miso = {GPIOA, GPIO6},
     .modem_sck = {GPIOA, GPIO5},
-    .modem_irq = {GPIOA, GPIO0},
+    .modem_exti_0 = {GPIOA, GPIO0},
 
     // Address pins
     .address0 = {GPIOB, GPIO10},
@@ -94,8 +94,8 @@ void platform_spi_init(void) {
                   platform_pinout.modem_mosi.pin);
     gpio_set_mode(platform_pinout.modem_miso.port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT,
                   platform_pinout.modem_miso.pin);
-    gpio_set_mode(platform_pinout.modem_irq.port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT,
-                  platform_pinout.modem_irq.pin);
+    gpio_set_mode(platform_pinout.modem_exti_0.port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT,
+                  platform_pinout.modem_exti_0.pin);
 
     spi_reset(platform_pinout.p_spi);
 
@@ -115,7 +115,7 @@ void platform_irq_init(void) {
     nvic_enable_irq(NVIC_EXTI0_IRQ);  // interrupt on PA0
     nvic_set_priority(NVIC_EXTI0_IRQ, 1);
 
-    exti_select_source(EXTI0, platform_pinout.modem_irq.port);
+    exti_select_source(EXTI0, platform_pinout.modem_exti_0.port);
     exti_set_trigger(EXTI0, EXTI_TRIGGER_RISING);
     exti_enable_request(EXTI0);
 }

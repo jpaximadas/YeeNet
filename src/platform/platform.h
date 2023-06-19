@@ -29,14 +29,28 @@ struct platform_pinout_table {
     pin_descriptor_t modem_mosi;
     pin_descriptor_t modem_miso;
     pin_descriptor_t modem_sck;
-    pin_descriptor_t modem_irq;
+    pin_descriptor_t modem_exti_0;
+    pin_descriptor_t modem_exti_1;
+    pin_descriptor_t modem_exti_2;
+    pin_descriptor_t modem_exti_3;
+    pin_descriptor_t modem_exti_4;
+    pin_descriptor_t modem_exti_5;
 
     // Address pins
     pin_descriptor_t address0;
     pin_descriptor_t address1;
+    pin_descriptor_t address2;
+    pin_descriptor_t address3;
+    pin_descriptor_t address4;
+    pin_descriptor_t address5;
+    pin_descriptor_t address6;
+    pin_descriptor_t address7;
 
     // Indicator pin
     pin_descriptor_t indicator;
+    pin_descriptor_t LED_R;
+    pin_descriptor_t LED_G;
+    pin_descriptor_t LED_B;
 };
 
 extern const struct platform_pinout_table platform_pinout;
