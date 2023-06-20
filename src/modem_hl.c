@@ -51,7 +51,11 @@ bool modem_setup(struct modem *this_modem,
     delay_nops(1000000);
     gpio_set(this_modem->rst.port, this_modem->rst.pin);
 
-    lora_change_mode(this_modem, SLEEP);
+    // lora_change_mode(this_modem, SLEEP);
+
+    if (!lora_write_reg_and_check(this_modem, LORA_REG_OP_MODE, MODE_LORA | MODE_SLEEP)) {
+        return false;
+    }
 
     // assume max power settings
     // Configure PA_BOOST with max power

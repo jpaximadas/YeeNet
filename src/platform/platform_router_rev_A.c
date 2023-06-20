@@ -27,8 +27,8 @@ const struct platform_pinout_table platform_pinout = {
     .modem_exti_1 = {GPIOA, GPIO1},
     .modem_exti_2 = {GPIOA, GPIO2},
     .modem_exti_3 = {GPIOA, GPIO3},
-    .modem_exti_4 = {GPIOA, GPIO4},
-    .modem_exti_5 = {GPIOA, GPIO5},
+    .modem_exti_4 = {GPIOB, GPIO4},
+    .modem_exti_5 = {GPIOB, GPIO5},
 
     // Address pins
     .address0 = {GPIOB, GPIO15},
@@ -68,6 +68,13 @@ void platform_usart_init(void) {
 
     // Setup GPIO pin GPIO_USART3_RE_RX on GPIO port B for receive
     gpio_set_mode(GPIOB, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, GPIO_USART3_RX);
+
+    // setup GPIO pin on GPIO port B for RTS output
+    gpio_set_mode(GPIOB, GPIO_MODE_OUTPUT_50_MHZ, GPIO_CNF_OUTPUT_ALTFN_PUSHPULL, GPIO_USART3_RTS);
+    // gpio_set_mode(GPIOB, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, GPIO_USART3_RTS);
+
+    // setup GPIO pin on GPIO port B for CTS output
+    gpio_set_mode(GPIOB, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, GPIO_USART3_CTS);
 
     // Setup UART parameters
     usart_set_baudrate(platform_pinout.p_usart, 115200);
@@ -139,7 +146,6 @@ void platform_spi_init(void) {
                   platform_pinout.modem_mosi.pin);
     gpio_set_mode(platform_pinout.modem_miso.port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT,
                   platform_pinout.modem_miso.pin);
-
     gpio_set_mode(platform_pinout.modem_exti_0.port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT,
                   platform_pinout.modem_exti_0.pin);
     gpio_set_mode(platform_pinout.modem_exti_1.port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT,

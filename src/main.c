@@ -9,7 +9,6 @@ int main(void) {
     platform_gpio_init();
     platform_spi_init();
     local_address_setup();
-
     free_records_init();
     host_link_init(USART);
 

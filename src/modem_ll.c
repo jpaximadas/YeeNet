@@ -145,6 +145,16 @@ void lora_write_reg(struct modem *this_modem, uint8_t reg, uint8_t val) {
     ss_set(this_modem);
 }
 
+bool lora_write_reg_and_check(struct modem *this_modem, uint8_t reg, uint8_t val) {
+    lora_write_reg(this_modem, reg, val);
+    uint8_t retval = lora_read_reg(this_modem, reg);
+    if (retval == val) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 #define FXOSC 32000000
 #define FREQ_TO_REG(in_freq) ((uint32_t)((((uint64_t)in_freq) << 19) / FXOSC))
 #define REG_TO_FREQ(in_reg) ((uint32_t)((FXOSC * in_reg) >> 19))

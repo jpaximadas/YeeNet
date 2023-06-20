@@ -63,6 +63,7 @@ void lora_change_mode(struct modem *this_modem, enum lora_mode change_to);
 
 uint8_t lora_read_reg(struct modem *this_modem, uint8_t reg);
 void lora_write_reg(struct modem *this_modem, uint8_t reg, uint8_t val);
+bool lora_write_reg_and_check(struct modem *this_modem, uint8_t reg, uint8_t val);
 
 void lora_dbg_print_irq(uint8_t data);
 
